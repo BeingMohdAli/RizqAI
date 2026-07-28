@@ -19,5 +19,5 @@ class Agent(str, Enum):
 
 class PlannerState(BaseModel):
     intent: Intent = Field(description="Classified intent of the user's query.")
-    companies: List[str] = Field(default_factory=list, description="Companies or stock symbols mentioned by the user.")
+    companies: List[str] = Field(default_factory=list, description="Stock ticker symbols for the companies mentioned by the user (e.g. 'NVDA', not 'NVIDIA'). Always convert company names to their ticker symbol.")
     tasks: List[Agent] = Field(description="Agents that should be executed.")
