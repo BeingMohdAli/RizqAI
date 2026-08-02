@@ -1,3 +1,5 @@
+from typing import List
+
 from langsmith import traceable
 from langchain_classic.agents.agent import AgentExecutor
 from langchain_classic.agents.tool_calling_agent.base import create_tool_calling_agent
@@ -8,6 +10,7 @@ from backend.graph.state import GraphState
 from backend.prompts.prompts import RESEARCH_PROMPT
 from backend.tools.news_tools import get_company_news
 from backend.tools.stock_tools import get_stock_snapshot
+from backend.schemas.research_state import ResearchData, ToolOutputDict
 
 TOOLS = [get_stock_snapshot, get_company_news]
 
@@ -44,7 +47,7 @@ async def research_agent(state: GraphState) -> GraphState:
 
         result = await agent_executor.ainvoke({"companies": companies})
 
-        tool_outputs = []
+        tool_outputs : List[ToolOutputDict] = []
         for action, observation in result.get("intermediate_steps", []):
             tool_outputs.append({
                 "tool": action.tool,
@@ -52,10 +55,10 @@ async def research_agent(state: GraphState) -> GraphState:
                 "output": observation
             })
 
-        research_data = {
-            "summary": result.get("output"),
-            "tool_data": tool_outputs
-        }
+        research_data = ResearchData(
+            summary=str(result.get("output", "")),
+            tool_data=tool_outputs
+        )
 
     except Exception as e:
         return {
