@@ -1,40 +1,41 @@
-from langgraph.graph import START, END, StateGraph
+from .state import GraphState
 
+from langgraph.graph import START, END, StateGraph
 from backend.agents.planner_agent import planner_agent
 from backend.agents.research_agent import research_agent
-from backend.schemas.planner_state import Agent
-
-from .state import GraphState
+from backend.agents.risk_agent import risk_agent
+from backend.agents.node_rounting import route_next_agent
 
 graph_builder = StateGraph(GraphState)
 
 graph_builder.add_node("planner_agent", planner_agent)
 graph_builder.add_node("research_agent", research_agent)
-
-
-def route_after_planner(state: GraphState) -> str:
-    """Decide which agent runs next based on the Planner Agent's task list.
-
-    Falls through to END if planning failed or research wasn't requested.
-    Other agents (risk, debate, thesis) can be added to this router the
-    same way once they're implemented.
-    """
-    if not state.get("success"):
-        return END
-
-    plan = state.get("plan")
-    if not plan or Agent.RESEARCH not in plan.tasks:
-        return END
-
-    return "research_agent"
-
+graph_builder.add_node("risk_agent", risk_agent)
 
 graph_builder.add_edge(START, "planner_agent")
+
+routing_map = {
+    "research_agent": "research_agent",
+    "risk_agent": "risk_agent",
+    END: END
+}
+
 graph_builder.add_conditional_edges(
     "planner_agent",
-    route_after_planner,
-    {"research_agent": "research_agent", END: END},
+    route_next_agent,
+    routing_map
 )
-graph_builder.add_edge("research_agent", END)
+
+graph_builder.add_conditional_edges(
+    "research_agent",
+    route_next_agent,
+    routing_map
+)
+
+graph_builder.add_conditional_edges(
+    "risk_agent",
+    route_next_agent,
+    routing_map
+)
 
 final_graph = graph_builder.compile()

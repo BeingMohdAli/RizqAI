@@ -13,7 +13,7 @@ async def planner_agent(state: GraphState) -> GraphState:
 
     try:
         planner_llm = llm.with_structured_output(PlannerState)
-        prompt = ChatPromptTemplate.from_messages([("system", PLANNER_PROMPT) , ("human" , "{user_query}")])
+        prompt = ChatPromptTemplate.from_messages([("system", PLANNER_PROMPT), ("human" , "{user_query}")])
         messages = await prompt.ainvoke({"user_query": state["user_query"]})
         plan = await planner_llm.ainvoke(messages)
 

@@ -66,7 +66,10 @@ async def research_agent(state: GraphState) -> GraphState:
             "error": f"research_agent failed: {e}",
         }
 
+    completed = state.get("completed_tasks", []) or []
+    new_completed = completed + ["research_agent"]
     return {
         "success": True,
         "research": research_data,
+        "completed_tasks": new_completed
     }
