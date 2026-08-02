@@ -7,7 +7,7 @@ from langsmith import traceable
 
 @traceable(name="planner_agent")
 async def planner_agent(state: GraphState) -> GraphState:
-    """Planner Agent classify the user intent and plan the agents to run"""
+    """Planner Agent extracts company name and plan the agents to run"""
 
     print("Planner agent Working....")
 
