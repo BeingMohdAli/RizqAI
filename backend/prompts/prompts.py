@@ -76,8 +76,23 @@ If the user asks ONLY about portfolio risk,
 
 Execute:
 
-[
+[   
+    "research_agent",
     "risk_agent"
+]
+
+----------------------------
+
+Rule 4:
+If the request is related to investing in any specific company,
+Always include "research agent" in the execute tasks list
+
+Execute:
+
+[
+    "research_agent",
+    .....
+    .....
 ]
 
 ----------------------------
