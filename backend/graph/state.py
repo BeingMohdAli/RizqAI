@@ -2,6 +2,7 @@ from typing import TypedDict, List
 from backend.schemas.planner_state import PlannerState
 from backend.schemas.research_state import ResearchData
 from backend.schemas.risk_state import RiskState
+from backend.schemas.debate_state import DebateAgent
 
 class GraphState(TypedDict):
     success: bool
@@ -11,3 +12,4 @@ class GraphState(TypedDict):
     completed_tasks: List[str]
     research: ResearchData | None
     risks: RiskState | None
+    debate: DebateAgent | None
