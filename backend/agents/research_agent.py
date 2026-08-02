@@ -1,8 +1,7 @@
-import asyncio
-import json
-
-from langchain_core.prompts import ChatPromptTemplate
 from langsmith import traceable
+from langchain_classic.agents.agent import AgentExecutor
+from langchain_classic.agents.tool_calling_agent.base import create_tool_calling_agent
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from backend.config import llm
 from backend.graph.state import GraphState
@@ -10,44 +9,10 @@ from backend.prompts.prompts import RESEARCH_PROMPT
 from backend.tools.news_tools import get_company_news
 from backend.tools.stock_tools import get_stock_snapshot
 
-
-async def _research_company(company: str) -> dict:
-    """Gather stock data + news for a single company concurrently.
-
-    yfinance and newsapi-python are both synchronous/blocking libraries, so
-    each call is pushed to a thread via run_in_executor rather than blocking
-    the event loop directly.
-    """
-    loop = asyncio.get_event_loop()
-
-    snapshot_task = loop.run_in_executor(None, get_stock_snapshot, company)
-    news_task = loop.run_in_executor(None, get_company_news, company)
-
-    snapshot, news = await asyncio.gather(snapshot_task, news_task)
-
-    return {
-        "symbol": company,
-        "snapshot": snapshot,
-        "news": news,
-    }
-
+TOOLS = [get_stock_snapshot, get_company_news]
 
 @traceable(name="research_agent")
 async def research_agent(state: GraphState) -> GraphState:
-    """Research Agent.
-
-    Fetches stock price, fundamentals, company info, and the latest news for
-    every company identified by the Planner Agent (state["plan"].companies),
-    then asks the LLM for a short, neutral, non-advisory summary of each.
-
-    Populates state["research"] with:
-        {
-            "<SYMBOL>": {"symbol": ..., "snapshot": {...}, "news": [...]},
-            ...
-            "summary": "<LLM-written overview of all companies researched>",
-        }
-    """
-
     print("Research agent Working....")
 
     plan = state.get("plan")
@@ -60,19 +25,37 @@ async def research_agent(state: GraphState) -> GraphState:
         }
 
     try:
-        results = await asyncio.gather(
-            *(_research_company(company) for company in companies)
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", RESEARCH_PROMPT),
+            ("human", "Please research the following companies: {companies}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ])
+
+        agent = create_tool_calling_agent(llm=llm, tools=TOOLS, prompt=prompt)
+
+        agent_executor = AgentExecutor(
+            agent=agent,
+            tools=TOOLS,
+            handle_parsing_errors=True,
+            max_iterations=6,
+            return_intermediate_steps=True
         )
 
-        research_data: dict = {item["symbol"]: item for item in results}
+        result = await agent_executor.ainvoke({"companies": companies})
 
-        prompt = ChatPromptTemplate.from_messages([("system", RESEARCH_PROMPT)])
-        messages = await prompt.ainvoke(
-            {"research_data": json.dumps(research_data, default=str)}
-        )
-        summary = await llm.ainvoke(messages)
+        tool_outputs = []
+        for action, observation in result.get("intermediate_steps", []):
+            tool_outputs.append({
+                "tool": action.tool,
+                "tool_input": action.tool_input,
+                "output": observation
+            })
 
-        research_data["summary"] = summary.content
+        research_data = {
+            "summary": result.get("output"),
+            "tool_data": tool_outputs
+        }
 
     except Exception as e:
         return {

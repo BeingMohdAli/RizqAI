@@ -6,7 +6,7 @@ without needing extra serialization.
 """
 
 import yfinance as yf
-
+from langchain_core.tools import tool
 
 def resolve_ticker_symbol(query: str) -> str | None:
     """Best-effort resolution of a company name/ticker to a real ticker symbol.
@@ -82,7 +82,7 @@ def get_company_info(symbol: str) -> dict:
     except Exception as e:
         return {"symbol": symbol, "error": f"get_company_info failed: {e}"}
 
-
+@tool
 def get_stock_snapshot(symbol: str) -> dict:
     """Combine price data and fundamentals into a single snapshot.
 
