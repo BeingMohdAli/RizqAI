@@ -1,4 +1,4 @@
-from .state import GraphState
+from backend.graph.state import GraphState
 
 from langgraph.graph import START, END, StateGraph
 from backend.agents.planner_agent import planner_agent
