@@ -15,6 +15,6 @@ class GraphState(TypedDict):
     plan: PlannerState | None
     completed_tasks: Annotated[list[str], add]
     research: ResearchData | None
-    risk: RiskState | None
+    risks: RiskState | None
     debate: DebateAgent | None
     thesis: ThesisAgent | None
