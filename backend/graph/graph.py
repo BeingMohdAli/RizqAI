@@ -6,7 +6,7 @@ from backend.agents.research_agent import research_agent
 from backend.agents.risk_agent import risk_agent
 from backend.agents.debate_agent import debate_agent
 from backend.agents.thesis_agent import thesis_agent
-from backend.agents.node_rounting import route_next_agent
+from backend.agents.node_routing import route_next_agent
 
 graph_builder = StateGraph(GraphState)
 

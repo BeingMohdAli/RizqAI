@@ -12,7 +12,9 @@ async def risk_agent(state: GraphState) -> GraphState:
 
     print("Risk agent Working....")
 
-    research_data = state.get("research")
+    research = state.get("research")
+    research_data = research.tool_data
+    research_summary = research.summary
 
     if not research_data:
         return {
@@ -22,8 +24,8 @@ async def risk_agent(state: GraphState) -> GraphState:
 
     try:
         risk_llm = llm.with_structured_output(RiskState)
-        prompt = ChatPromptTemplate.from_messages([("system", RISK_PROMPT), ("human", "Research data: {research}")])
-        messages = await prompt.ainvoke({"research": research_data})
+        prompt = ChatPromptTemplate.from_messages([("system", RISK_PROMPT), ("human", "Research Tool data: {research_data} Research Summary: {research_summary} Using both, perform a risk assessment.")])
+        messages = await prompt.ainvoke({"research_data": research_data, "research_summary": research_summary})
         risk_analysis = await risk_llm.ainvoke(messages)
 
     except Exception as e:
