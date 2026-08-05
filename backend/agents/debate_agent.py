@@ -12,15 +12,27 @@ async def debate_agent(state: GraphState) -> GraphState:
 
     print("Debate agent Working....")
 
-    research = state.get("summary")
+    research = state.get("research")
     research_summary = research.summary
     risk_data = state.get("risks")
 
-    if not research or risk_data or research_summary:
+    if not research:
         return {
                 "success": False ,
-                "error" : "Research or Risk Data not found"
+                "error" : "Research Data not found"
             }
+
+    if not research_summary:
+        return {
+            "success": False,
+            "error" : "Research Summary Data not found"
+        }
+
+    if not risk_data:
+        return {
+            "success": False,
+            "error" : "Risk Data not found"
+        }
 
     try:
         debate_llm = llm.with_structured_output(DebateAgent)
