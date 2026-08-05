@@ -46,11 +46,8 @@ async def debate_agent(state: GraphState) -> GraphState:
             "error" : str(e)
         }
 
-    completed = state.get("completed_tasks", []) or []
-    new_completed = completed + ["debate_agent"]
-
     return {
         "success": True ,
         "debate": debate_analysis,
-        "completed_tasks": new_completed
+        "completed_tasks": ["debate_agent"]
     }

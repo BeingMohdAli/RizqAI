@@ -34,11 +34,8 @@ async def risk_agent(state: GraphState) -> GraphState:
             "error" : str(e)
         }
 
-    completed = state.get("completed_tasks", []) or []
-    new_completed = completed + ["risk_agent"]
-
     return {
         "success": True ,
         "risks": risk_analysis,
-        "completed_tasks": new_completed
+        "completed_tasks": ["risk_agent"]
     }
