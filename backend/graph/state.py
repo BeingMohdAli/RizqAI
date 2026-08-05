@@ -1,6 +1,5 @@
-from typing import Annotated
+from typing import Annotated, TypedDict
 from operator import add
-from typing import TypedDict
 
 from backend.schemas.planner_state import PlannerState
 from backend.schemas.research_state import ResearchData
