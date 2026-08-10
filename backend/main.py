@@ -37,8 +37,3 @@ app.add_middleware(
 )
 
 app.include_router(router)
-
-
-@app.get("/")
-async def root():
-    return {"message": "RizqAI API is running", "docs": "/docs"}

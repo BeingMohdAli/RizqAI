@@ -12,32 +12,37 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.graph.graph import final_graph
-from backend.schemas.api_schemas import AnalyzeRequest, AnalyzeResponse, HealthResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["analysis"])
 
+@router.get("/")
+async def home():
+    return {"message": "RizqAI API is running"}
 
-@router.get("/health", response_model=HealthResponse)
-async def health() -> HealthResponse:
-    return HealthResponse(status="ok")
+
+@router.get("/health")
+async def health():
+    return {
+        "status" : "ok"
+    }
 
 
-@router.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(payload: AnalyzeRequest) -> AnalyzeResponse:
+@router.post("/analyze")
+async def analyze(query: str):
     """Run the full Planner -> Research -> Risk -> Debate -> Thesis pipeline
     for a single user query and return the final state once it's done.
     """
     try:
-        result = await final_graph.ainvoke({"user_query": payload.query})
+        result = await final_graph.ainvoke({"user_query": query})
     except Exception as e:
         logger.exception("final_graph.ainvoke failed")
         raise HTTPException(status_code=500, detail=str(e))
 
     # The graph itself reports failures via success=False rather than raising,
     # so we still return 200 here and let the frontend read `success`/`error`.
-    return AnalyzeResponse(**result)
+    return result
 
 
 def _serialize_node_output(node_name: str, node_output: dict) -> dict:
@@ -54,7 +59,7 @@ def _serialize_node_output(node_name: str, node_output: dict) -> dict:
 
 
 @router.post("/analyze/stream")
-async def analyze_stream(payload: AnalyzeRequest) -> StreamingResponse:
+async def analyze_stream(query: str) -> StreamingResponse:
     """Same pipeline as /analyze, but streamed as Server-Sent Events so the
     frontend can render each agent's result as soon as it's ready instead of
     waiting for the whole multi-agent run to finish.
@@ -62,13 +67,13 @@ async def analyze_stream(payload: AnalyzeRequest) -> StreamingResponse:
     Each event is a JSON object: {"node": "<agent_name>", "data": {...}}
     A final {"node": "done"} event closes the stream.
     """
-    if not payload.query or not payload.query.strip():
+    if not query or not query.strip():
         raise HTTPException(status_code=400, detail="query must not be empty")
 
     async def event_generator():
         try:
             async for update in final_graph.astream(
-                {"user_query": payload.query}, stream_mode="updates"
+                {"user_query": query}, stream_mode="updates"
             ):
                 for node_name, node_output in update.items():
                     event = _serialize_node_output(node_name, node_output or {})
@@ -83,7 +88,6 @@ async def analyze_stream(payload: AnalyzeRequest) -> StreamingResponse:
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
     )
