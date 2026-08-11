@@ -1,10 +1,9 @@
-"""Wrapper around NewsAPI (newsapi-python) used by the Research Agent to
-fetch the latest headlines about a company or stock symbol.
-"""
-
 from newsapi import NewsApiClient
 from backend.config import NEWS_API_KEY
+
 from langchain_core.tools import tool
+
+
 _client: NewsApiClient | None = None
 
 

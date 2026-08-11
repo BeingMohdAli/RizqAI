@@ -1,10 +1,3 @@
-"""HTTP routes for the RizqAI agent pipeline.
-
-Two ways to run the graph:
-- POST /api/analyze         -> waits for the full run, returns the final state
-- POST /api/analyze/stream  -> Server-Sent Events, one event per agent as it finishes
-"""
-
 import json
 import logging
 
@@ -15,11 +8,14 @@ from backend.graph.graph import final_graph
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api", tags=["analysis"])
+router = APIRouter(prefix="/api")
+
 
 @router.get("/")
 async def home():
-    return {"message": "RizqAI API is running"}
+    return {
+        "message": "RizqAI API is running"
+    }
 
 
 @router.get("/health")
@@ -31,8 +27,8 @@ async def health():
 
 @router.post("/analyze")
 async def analyze(query: str):
-    """Run the full Planner -> Research -> Risk -> Debate -> Thesis pipeline
-    for a single user query and return the final state once it's done.
+    """Run the full agentic piepline for a single user query 
+    and return the final state once it's done.
     """
     try:
         result = await final_graph.ainvoke({"user_query": query})
@@ -40,8 +36,6 @@ async def analyze(query: str):
         logger.exception("final_graph.ainvoke failed")
         raise HTTPException(status_code=500, detail=str(e))
 
-    # The graph itself reports failures via success=False rather than raising,
-    # so we still return 200 here and let the frontend read `success`/`error`.
     return result
 
 

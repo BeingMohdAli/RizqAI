@@ -1,10 +1,3 @@
-"""Wrapper around Yahoo Finance (yfinance) used by the Research Agent.
-
-Every function returns a plain dict so it can be dropped straight into the
-shared LangGraph state (backend/graph/state.py -> GraphState["research"])
-without needing extra serialization.
-"""
-
 import yfinance as yf
 from langchain_core.tools import tool
 
@@ -82,6 +75,7 @@ def get_company_info(symbol: str) -> dict:
         }
     except Exception as e:
         return {"symbol": symbol, "error": f"get_company_info failed: {e}"}
+
 
 @tool
 def get_stock_snapshot(symbol: str) -> dict:

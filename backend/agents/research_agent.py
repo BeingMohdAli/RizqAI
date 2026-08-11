@@ -16,6 +16,7 @@ TOOLS = [get_stock_snapshot, get_company_news]
 
 @traceable(name="research_agent")
 async def research_agent(state: GraphState) -> GraphState:
+    """Extract company stocks data and company news using tools"""
     print("Research agent Working....")
 
     plan = state.get("plan")
@@ -63,7 +64,7 @@ async def research_agent(state: GraphState) -> GraphState:
     except Exception as e:
         return {
             "success": False,
-            "error": f"research_agent failed: {e}",
+            "error": f"Research Agent Failed: {str(e)}",
         }
 
     return {

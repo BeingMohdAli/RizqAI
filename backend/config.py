@@ -11,5 +11,4 @@ llm = ChatMistralAI(
     temperature=0.2,
 )
 
-# Used by backend/tools/news_tools.py to fetch market news for the Research Agent.
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")

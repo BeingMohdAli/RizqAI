@@ -8,7 +8,7 @@ from langsmith import traceable
 
 @traceable(name="thesis_agent")
 async def thesis_agent(state: GraphState) -> GraphState:
-    """Thesis agent generate the final thesis and recommendation for user based on 
+    """Generate the final thesis and recommendation for user based on 
     research, risk, and debate agent output
     """
 
@@ -16,13 +16,25 @@ async def thesis_agent(state: GraphState) -> GraphState:
 
     research = state.get("research")
     research_summary = research.summary
-    risk_data = state.get("risks")
-    debate_data = state.get("debate")
-
-    if not research_summary or risk_data or debate_data:
+    if not research_summary:
         return {
                 "success": False ,
-                "error" : "Research/Risk/Debate Data not found"
+                "error" : "Research Summary not found"
+            }
+    
+    risk_data = state.get("risks")
+    if not risk_data:
+        return {
+                "success": False ,
+                "error" : "Risk Data not found"
+            }
+    
+    debate_data = state.get("debate")
+
+    if not debate_data:
+        return {
+                "success": False ,
+                "error" : "Debate Data not found"
             }
 
     try:
@@ -34,7 +46,7 @@ async def thesis_agent(state: GraphState) -> GraphState:
     except Exception as e:
         return {
             "success": False ,
-            "error" : str(e)
+            "error" : f"Thesis Agent Failed: {str(e)}"
         }
 
     return {
