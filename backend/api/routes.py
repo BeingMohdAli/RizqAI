@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.graph.graph import final_graph
+from backend.graph.state import GraphState
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ async def health():
 
 
 @router.post("/analyze")
-async def analyze(query: str):
+async def analyze(query: str) -> GraphState:
     """Run the full agentic piepline for a single user query 
     and return the final state once it's done.
     """
@@ -36,7 +37,7 @@ async def analyze(query: str):
         logger.exception("final_graph.ainvoke failed")
         raise HTTPException(status_code=500, detail=str(e))
 
-    return result
+    return GraphState.model_validate(result)
 
 
 def _serialize_node_output(node_name: str, node_output: dict) -> dict:

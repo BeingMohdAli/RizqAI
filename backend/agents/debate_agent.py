@@ -13,7 +13,7 @@ async def debate_agent(state: GraphState) -> GraphState:
 
     print("Debate agent Working....")
 
-    research = state.get("research")
+    research = state.research
     if not research:
         return {
                 "success": False ,
@@ -27,7 +27,7 @@ async def debate_agent(state: GraphState) -> GraphState:
             "error" : "Research Summary Data not found"
         }
     
-    risk_data = state.get("risks")
+    risk_data = state.risks
     if not risk_data:
         return {
             "success": False,

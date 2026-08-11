@@ -13,7 +13,7 @@ async def risk_agent(state: GraphState) -> GraphState:
 
     print("Risk agent Working....")
 
-    research = state.get("research")
+    research = state.research
     research_data = research.tool_data
     if not research_data:
         return {

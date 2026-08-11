@@ -19,7 +19,7 @@ async def research_agent(state: GraphState) -> GraphState:
     """Extract company stocks data and company news using tools"""
     print("Research agent Working....")
 
-    plan = state.get("plan")
+    plan = state.plan
     companies = plan.companies if plan else []
 
     if not companies:

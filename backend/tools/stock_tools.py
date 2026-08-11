@@ -48,8 +48,12 @@ def get_stock_price(symbol: str) -> dict:
             "year_low": fast_info.get("yearLow"),
             "market_cap": fast_info.get("marketCap"),
         }
+    
     except Exception as e:
-        return {"symbol": symbol, "error": f"get_stock_price failed: {e}"}
+        return {
+            "symbol": symbol,
+            "error": f"Fetching Stock Price failed: {e}"
+        }
 
 
 def get_company_info(symbol: str) -> dict:
@@ -73,23 +77,22 @@ def get_company_info(symbol: str) -> dict:
             "52_week_high": info.get("fiftyTwoWeekHigh"),
             "52_week_low": info.get("fiftyTwoWeekLow"),
         }
+    
     except Exception as e:
-        return {"symbol": symbol, "error": f"get_company_info failed: {e}"}
+        return {
+            "symbol": symbol,
+            "error": f"Fetching Company info failed: {e}"
+        }
 
 
 @tool
 def get_stock_snapshot(symbol: str) -> dict:
-    """Combine price data and fundamentals into a single snapshot.
+    """Combine price data and fundamentals into a single snapshot."""
 
-    This is the main entry point the Research Agent calls per company.
-    Resolves company names to ticker symbols first as a safety net, in
-    case the Planner Agent returns a name instead of a ticker.
-    """
     resolved_symbol = resolve_ticker_symbol(symbol) or symbol
-
     price = get_stock_price(resolved_symbol)
     company = get_company_info(resolved_symbol)
 
-    # Company info is the richer dict; price data fills in/overrides the
-    # live price fields on top of it.
-    return {**company, **price}
+    return {**company, 
+            **price
+        }
