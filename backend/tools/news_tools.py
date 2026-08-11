@@ -20,6 +20,7 @@ def _get_client() -> NewsApiClient:
         _client = NewsApiClient(api_key=NEWS_API_KEY)
     return _client
 
+
 @tool
 def get_company_news(company: str, page_size: int = 5) -> list[dict]:
     """Fetch the latest news headlines mentioning a company or ticker.

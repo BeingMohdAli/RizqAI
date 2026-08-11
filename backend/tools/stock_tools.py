@@ -8,6 +8,7 @@ without needing extra serialization.
 import yfinance as yf
 from langchain_core.tools import tool
 
+
 def resolve_ticker_symbol(query: str) -> str | None:
     """Best-effort resolution of a company name/ticker to a real ticker symbol.
 
