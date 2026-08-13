@@ -19,7 +19,7 @@ async def thesis_agent(state: GraphState) -> GraphState:
     risk_data = state.get("risks")
     debate_data = state.get("debate")
 
-    if not research_summary or risk_data or debate_data:
+    if not research_summary or not risk_data or not debate_data:
         return {
                 "success": False ,
                 "error" : "Research/Risk/Debate Data not found"
@@ -29,7 +29,7 @@ async def thesis_agent(state: GraphState) -> GraphState:
         thesis_llm = llm.with_structured_output(ThesisAgent)
         prompt = ChatPromptTemplate.from_messages([("system", THESIS_PROMPT), ("human", "Research Summary: {research_summary}\n Risk Data: {risk}\n Debate data: {debate}")])
         messages = await prompt.ainvoke({"research_summary": research_summary, "risk": risk_data, "debate": debate_data})
-        debate_analysis = await thesis_llm.ainvoke(messages)
+        thesis_analysis = await thesis_llm.ainvoke(messages)
 
     except Exception as e:
         return {
@@ -39,6 +39,6 @@ async def thesis_agent(state: GraphState) -> GraphState:
 
     return {
         "success": True ,
-        "debate": debate_analysis,
+        "thesis": thesis_analysis,
         "completed_tasks": ["thesis_agent"]
     }
