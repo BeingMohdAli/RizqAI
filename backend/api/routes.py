@@ -18,12 +18,14 @@ from backend.schemas.api_schemas import AnalyzeRequest, AnalyzeResponse, HealthR
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api", tags=["analysis"])
+router = APIRouter(prefix="/api")
 
 
 @router.get("/")
 async def home():
-    return {"message": "RizqAI API is running"}
+    return {
+        "message": "RizqAI API is running"
+    }
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -50,11 +52,13 @@ def _serialize_node_output(node_name: str, node_output: dict) -> dict:
     model instances, e.g. PlannerState/ResearchData/...) into plain JSON.
     """
     data = {}
+
     for key, value in node_output.items():
         if hasattr(value, "model_dump"):
             data[key] = value.model_dump()
         else:
             data[key] = value
+
     return {"node": node_name, "data": data}
 
 
@@ -73,15 +77,24 @@ async def analyze_stream(payload: AnalyzeRequest) -> StreamingResponse:
     async def event_generator():
         try:
             async for update in final_graph.astream(
-                {"user_query": payload.query}, stream_mode="updates"
+                {"user_query": payload.query},
+                stream_mode="updates"
             ):
                 for node_name, node_output in update.items():
-                    event = _serialize_node_output(node_name, node_output or {})
+                    event = _serialize_node_output(
+                        node_name,
+                        node_output or {}
+                    )
                     yield f"data: {json.dumps(event)}\n\n"
+
             yield f"data: {json.dumps({'node': 'done'})}\n\n"
+
         except Exception as e:
             logger.exception("final_graph.astream failed")
-            yield f"data: {json.dumps({'node': 'error', 'error': str(e)})}\n\n"
+            yield (
+                f"data: "
+                f"{json.dumps({'node': 'error', 'error': str(e)})}\n\n"
+            )
 
     return StreamingResponse(
         event_generator(),

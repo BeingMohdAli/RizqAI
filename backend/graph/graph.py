@@ -1,6 +1,6 @@
-from backend.graph.state import GraphState
-
 from langgraph.graph import START, END, StateGraph
+
+from backend.graph.state import GraphState
 from backend.agents.planner_agent import planner_agent
 from backend.agents.research_agent import research_agent
 from backend.agents.risk_agent import risk_agent
