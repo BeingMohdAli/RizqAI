@@ -1,12 +1,3 @@
-"""HTTP routes for the RizqAI agent pipeline.
-
-Two ways to run the graph:
-- POST /api/analyze         -> waits for the full run, returns the final state
-- POST /api/analyze/stream  -> Server-Sent Events, one event per agent as it finishes
-
-Both accept a JSON body: {"query": "Should I buy NVDA?"}
-"""
-
 import json
 import logging
 
@@ -14,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.graph.graph import final_graph
-from backend.schemas.api_schemas import AnalyzeRequest, AnalyzeResponse, HealthResponse
+from backend.graph.state import GraphState
 
 logger = logging.getLogger(__name__)
 
@@ -28,23 +19,25 @@ async def home():
     }
 
 
-@router.get("/health", response_model=HealthResponse)
-async def health() -> HealthResponse:
-    return HealthResponse(status="ok")
+@router.get("/health")
+async def health():
+    return {
+        "status" : "ok"
+    }
 
 
-@router.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(payload: AnalyzeRequest) -> AnalyzeResponse:
-    """Run the full Planner -> Research -> Risk -> Debate -> Thesis pipeline
-    for a single user query and return the final state once it's done.
+@router.post("/analyze")
+async def analyze(query: str) -> GraphState:
+    """Run the full agentic piepline for a single user query 
+    and return the final state once it's done.
     """
     try:
-        result = await final_graph.ainvoke({"user_query": payload.query})
+        result = await final_graph.ainvoke({"user_query": query})
     except Exception as e:
         logger.exception("final_graph.ainvoke failed")
         raise HTTPException(status_code=500, detail=str(e))
 
-    return AnalyzeResponse(**result)
+    return GraphState.model_validate(result)
 
 
 def _serialize_node_output(node_name: str, node_output: dict) -> dict:
@@ -52,18 +45,16 @@ def _serialize_node_output(node_name: str, node_output: dict) -> dict:
     model instances, e.g. PlannerState/ResearchData/...) into plain JSON.
     """
     data = {}
-
     for key, value in node_output.items():
         if hasattr(value, "model_dump"):
             data[key] = value.model_dump()
         else:
             data[key] = value
-
     return {"node": node_name, "data": data}
 
 
 @router.post("/analyze/stream")
-async def analyze_stream(payload: AnalyzeRequest) -> StreamingResponse:
+async def analyze_stream(query: str) -> StreamingResponse:
     """Same pipeline as /analyze, but streamed as Server-Sent Events so the
     frontend can render each agent's result as soon as it's ready instead of
     waiting for the whole multi-agent run to finish.
@@ -71,37 +62,27 @@ async def analyze_stream(payload: AnalyzeRequest) -> StreamingResponse:
     Each event is a JSON object: {"node": "<agent_name>", "data": {...}}
     A final {"node": "done"} event closes the stream.
     """
-    if not payload.query or not payload.query.strip():
+    if not query or not query.strip():
         raise HTTPException(status_code=400, detail="query must not be empty")
 
     async def event_generator():
         try:
             async for update in final_graph.astream(
-                {"user_query": payload.query},
-                stream_mode="updates"
+                {"user_query": query}, stream_mode="updates"
             ):
                 for node_name, node_output in update.items():
-                    event = _serialize_node_output(
-                        node_name,
-                        node_output or {}
-                    )
+                    event = _serialize_node_output(node_name, node_output or {})
                     yield f"data: {json.dumps(event)}\n\n"
-
             yield f"data: {json.dumps({'node': 'done'})}\n\n"
-
         except Exception as e:
             logger.exception("final_graph.astream failed")
-            yield (
-                f"data: "
-                f"{json.dumps({'node': 'error', 'error': str(e)})}\n\n"
-            )
+            yield f"data: {json.dumps({'node': 'error', 'error': str(e)})}\n\n"
 
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
     )
