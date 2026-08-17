@@ -19,7 +19,6 @@ def _get_client() -> NewsApiClient:
         _client = NewsApiClient(api_key=NEWS_API_KEY)
     return _client
 
-
 @tool
 def get_company_news(company: str, page_size: int = 5) -> dict:
     """Fetch the latest news headlines mentioning a company or ticker.
@@ -39,17 +38,22 @@ def get_company_news(company: str, page_size: int = 5) -> dict:
 
         articles = response.get("articles", [])
 
-        return {
-            "title": articles.get("title"),
-            "source": (articles.get("source") or {}).get("name"),
-            "url": articles.get("url"),
-            "published_at": articles.get("publishedAt"),
-            "description": articles.get("description"),
-        }
+        simplified = [
+            {
+                "title": article.get("title"),
+                "source": (article.get("source") or {}).get("name"),
+                "url": article.get("url"),
+                "published_at": article.get("publishedAt"),
+                "description": article.get("description"),
+            }
+            for article in articles
+        ]
+
+        return {"success": True, "articles": simplified}
 
     except Exception as e:
         return {
-        "success": False,
-        "articles": [],
-        "error": f"Failed to fetch news for '{company}'",
-    }
+            "success": False,
+            "articles": [],
+            "error": f"Failed to fetch news for '{company}': {str(e)}",
+        }
