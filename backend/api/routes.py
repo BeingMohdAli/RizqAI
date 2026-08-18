@@ -1,12 +1,3 @@
-"""HTTP routes for the RizqAI agent pipeline.
-
-Two ways to run the graph:
-- POST /api/analyze         -> waits for the full run, returns the final state
-- POST /api/analyze/stream  -> Server-Sent Events, one event per agent as it finishes
-
-Both accept a JSON body: {"query": "Should I buy NVDA?"}
-"""
-
 import json
 import logging
 
@@ -22,36 +13,16 @@ router = APIRouter(prefix="/api")
 
 @router.get("/")
 async def home():
-    return {"message": "RizqAI API is running"}
+    return {
+        "message": "RizqAI API is running"
+    }
 
 
 @router.get("/health")
 async def health():
-    return {"status": "ok"}
-
-
-@router.post("/analyze")
-async def analyze(query: str = Body(..., embed=True)):
-    """Run the full agentic pipeline for a single user query and return the
-    final state once it's done.
-
-    `Body(..., embed=True)` tells FastAPI to expect a JSON body shaped like
-    {"query": "..."} (matching what the frontend sends) rather than a bare
-    string or a URL query parameter.
-    """
-    if not query or not query.strip():
-        raise HTTPException(status_code=400, detail="query must not be empty")
-
-    try:
-        result = await final_graph.ainvoke({"user_query": query})
-    except Exception as e:
-        logger.exception("final_graph.ainvoke failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-    # Returning the raw dict (rather than a typed response model) is fine here:
-    # FastAPI's default JSON encoder already knows how to serialize the nested
-    # Pydantic model instances inside it (PlannerState, ResearchData, etc.).
-    return result
+    return {
+        "status": "ok"
+    }
 
 
 def _serialize_node_output(node_name: str, node_output: dict) -> dict:
@@ -68,7 +39,7 @@ def _serialize_node_output(node_name: str, node_output: dict) -> dict:
 
 
 @router.post("/analyze/stream")
-async def analyze_stream(query: str = Body(..., embed=True)):
+async def analyze_stream(query: str = Body(..., embed=True)) -> StreamingResponse:
     """Same pipeline as /analyze, but streamed as Server-Sent Events so the
     frontend can render each agent's result as soon as it's ready instead of
     waiting for the whole multi-agent run to finish.
@@ -97,7 +68,6 @@ async def analyze_stream(query: str = Body(..., embed=True)):
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
     )
