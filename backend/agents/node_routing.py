@@ -1,5 +1,5 @@
 from langgraph.graph import END
-from backend.graph.state import GraphState
+from graph.state import GraphState
 
 def route_next_agent(state: GraphState) -> str:
     """Dynamically route to the next agent in the plan, or END if finished."""

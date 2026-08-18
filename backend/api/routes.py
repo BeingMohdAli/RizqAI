@@ -4,18 +4,11 @@ import logging
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import StreamingResponse
 
-from backend.graph.graph import final_graph
+from graph.graph import final_graph
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
-
-
-@router.get("/")
-async def home():
-    return {
-        "message": "RizqAI API is running"
-    }
 
 
 @router.get("/health")
@@ -40,7 +33,7 @@ def _serialize_node_output(node_name: str, node_output: dict) -> dict:
 
 @router.post("/analyze/stream")
 async def analyze_stream(query: str = Body(..., embed=True)) -> StreamingResponse:
-    """Same pipeline as /analyze, but streamed as Server-Sent Events so the
+    """Streamed as Server-Sent Events so the
     frontend can render each agent's result as soon as it's ready instead of
     waiting for the whole multi-agent run to finish.
 

@@ -1,7 +1,7 @@
-from backend.config import llm
-from backend.graph.state import GraphState
-from backend.prompts.prompts import THESIS_PROMPT
-from backend.schemas.thesis_state import ThesisAgent
+from config import llm
+from graph.state import GraphState
+from prompts.prompts import THESIS_PROMPT
+from schemas.thesis_state import ThesisAgent
 from langchain_core.prompts import ChatPromptTemplate
 from langsmith import traceable
 

@@ -1,7 +1,7 @@
-from backend.config import llm
-from backend.graph.state import GraphState
-from backend.prompts.prompts import RISK_PROMPT
-from backend.schemas.risk_state import RiskState
+from config import llm
+from graph.state import GraphState
+from prompts.prompts import RISK_PROMPT
+from schemas.risk_state import RiskState
 
 from langchain_core.prompts import ChatPromptTemplate
 from langsmith import traceable

@@ -1,12 +1,12 @@
 from langgraph.graph import START, END, StateGraph
 
-from backend.graph.state import GraphState
-from backend.agents.planner_agent import planner_agent
-from backend.agents.research_agent import research_agent
-from backend.agents.risk_agent import risk_agent
-from backend.agents.debate_agent import debate_agent
-from backend.agents.thesis_agent import thesis_agent
-from backend.agents.node_routing import route_next_agent
+from graph.state import GraphState
+from agents.planner_agent import planner_agent
+from agents.research_agent import research_agent
+from agents.risk_agent import risk_agent
+from agents.debate_agent import debate_agent
+from agents.thesis_agent import thesis_agent
+from agents.node_routing import route_next_agent
 
 graph_builder = StateGraph(GraphState)
 

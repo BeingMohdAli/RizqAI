@@ -1,5 +1,5 @@
 from newsapi import NewsApiClient
-from backend.config import NEWS_API_KEY
+from config import NEWS_API_KEY
 
 from langchain_core.tools import tool
 

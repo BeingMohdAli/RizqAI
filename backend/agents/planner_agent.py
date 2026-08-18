@@ -1,7 +1,7 @@
-from backend.config import llm
-from backend.graph.state import GraphState
-from backend.prompts.prompts import PLANNER_PROMPT
-from backend.schemas.planner_state import PlannerState
+from config import llm
+from graph.state import GraphState
+from prompts.prompts import PLANNER_PROMPT
+from schemas.planner_state import PlannerState
 
 from langchain_core.prompts import ChatPromptTemplate
 from langsmith import traceable

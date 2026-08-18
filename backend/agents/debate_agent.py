@@ -1,7 +1,7 @@
-from backend.config import llm
-from backend.graph.state import GraphState
-from backend.prompts.prompts import DEBATE_PROMPT
-from backend.schemas.debate_state import DebateAgent
+from config import llm
+from graph.state import GraphState
+from prompts.prompts import DEBATE_PROMPT
+from schemas.debate_state import DebateAgent
 
 from langchain_core.prompts import ChatPromptTemplate
 from langsmith import traceable
