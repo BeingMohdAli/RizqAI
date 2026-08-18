@@ -1,26 +1,187 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------- */
+/* RizqAI design tokens — "the desk"                                      */
+/* Deep ink-navy research memo, gold ticker accent, bull/bear semantics.  */
+/* ---------------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #0a0e17;
+  --ink-raised: #0d1220;
+  --surface: #121729;
+  --surface-raised: #171d33;
+  --line: #262e4a;
+  --line-soft: #1c2338;
+
+  --gold: #d4af6a;
+  --gold-soft: #d4af6a1a;
+  --bull: #4fae8a;
+  --bull-soft: #4fae8a1a;
+  --bear: #c1554f;
+  --bear-soft: #c1554f1a;
+
+  --text: #edeff5;
+  --text-muted: #8b93ac;
+  --text-faint: #565f80;
+
+  --background: var(--ink);
+  --foreground: var(--text);
 }
 
 @theme inline {
+  --color-ink: var(--ink);
+  --color-ink-raised: var(--ink-raised);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-bull: var(--bull);
+  --color-bull-soft: var(--bull-soft);
+  --color-bear: var(--bear);
+  --color-bear-soft: var(--bear-soft);
+
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fraunces);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--line);
 }
 
+html,
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  background-image:
+    radial-gradient(ellipse 900px 500px at 50% -10%, #d4af6a14, transparent 60%),
+    radial-gradient(ellipse 700px 500px at 90% 10%, #4fae8a0d, transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Thin custom scrollbar that fits the desk aesthetic */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--line);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-faint);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Signature element: the verdict stamp                                   */
+/* ---------------------------------------------------------------------- */
+
+.verdict-stamp {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+  transform: rotate(-3deg);
+  font-family: var(--font-display), serif;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.verdict-stamp::before,
+.verdict-stamp::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.verdict-stamp::after {
+  inset: 3px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Motion — deliberate, staggered reveals as the desk works.              */
+/* ---------------------------------------------------------------------- */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise-in {
+  animation: rise-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.75);
+  }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+.animate-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--line-soft) 0px,
+    var(--surface-raised) 80px,
+    var(--line-soft) 160px
+  );
+  background-size: 400px 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise-in,
+  .animate-pulse-dot,
+  .animate-shimmer {
+    animation: none !important;
+  }
 }
