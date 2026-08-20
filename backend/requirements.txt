@@ -10,3 +10,7 @@ yfinance
 newsapi-python
 fastapi
 uvicorn[standard]
+
+## Used for test files
+httpx2==2.12.0
+pytest==9.1.1

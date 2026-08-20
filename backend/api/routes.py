@@ -12,13 +12,10 @@ from database.db import get_db
 from database.models import Conversation, Message
 from schemas.conversation import ChatRequest, ConversationListItem, MessageResponse
 from graph.graph import final_graph
-from helpers import serialize_node_output, generate_conversation_title
+from .helpers import serialize_node_output, generate_conversation_title
 
 
-app = FastAPI(
-    title="RizqAi",
-    version="1.0.0"
-)
+app = FastAPI(title="RizqAi", version="1.0.0")
 
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
