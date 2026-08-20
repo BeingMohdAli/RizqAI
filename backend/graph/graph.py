@@ -1,4 +1,6 @@
+import sqlite3
 from langgraph.graph import START, END, StateGraph
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 from graph.state import GraphState
 from agents.planner_agent import planner_agent
@@ -7,6 +9,9 @@ from agents.risk_agent import risk_agent
 from agents.debate_agent import debate_agent
 from agents.thesis_agent import thesis_agent
 from agents.node_routing import route_next_agent
+
+conn = sqlite3.connect("rizqai_checkpoints.db", check_same_thread=False)
+checkpointer = SqliteSaver(conn=conn)
 
 graph_builder = StateGraph(GraphState)
 
@@ -56,4 +61,4 @@ graph_builder.add_conditional_edges(
     routing_map
 )
 
-final_graph = graph_builder.compile()
+final_graph = graph_builder.compile(checkpointer=checkpointer)
