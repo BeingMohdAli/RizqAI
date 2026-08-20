@@ -1,6 +1,4 @@
-"""
-Helper functions used by api's
-"""
+from database.models import Message
 
 def serialize_node_output(node_name: str, node_output: dict) -> dict:
     """Convert one node's raw LangGraph output (which may contain Pydantic
@@ -22,3 +20,13 @@ def generate_conversation_title(query: str, max_length: int = 60) -> str:
         return title
 
     return title[:max_length].rstrip() + "..."
+
+
+MAX_SHORT_TERM_MESSAGES = 10
+
+def format_conversation_history(messages: list[Message]) -> str:
+    recent_messages = messages[-MAX_SHORT_TERM_MESSAGES:]
+    return "\n".join(
+        f"{message.role.title()}: {message.content}"
+        for message in recent_messages
+    ) or "(no previous messages)"

@@ -12,6 +12,7 @@ from agents.node_routing import route_next_agent
 
 conn = sqlite3.connect("rizqai_checkpoints.db", check_same_thread=False)
 checkpointer = SqliteSaver(conn=conn)
+checkpointer.setup()
 
 graph_builder = StateGraph(GraphState)
 

@@ -13,6 +13,7 @@ class GraphState(BaseModel):
     success: bool = False
     error: str | None = None
     user_query: str = ""
+    conversation_history: str = ""
     plan: PlannerState | None = None
     completed_tasks: Annotated[list[str], add] = Field(default_factory=list)
     research: ResearchData | None = None

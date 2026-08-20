@@ -12,7 +12,7 @@ from database.db import get_db
 from database.models import Conversation, Message
 from schemas.conversation import ChatRequest, ConversationListItem, MessageResponse
 from graph.graph import final_graph
-from .helpers import serialize_node_output, generate_conversation_title
+from .helpers import serialize_node_output, generate_conversation_title, format_conversation_history
 
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
@@ -86,20 +86,15 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
             .first()
         )
 
-    if conversation is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Conversation not found",
-        )
-
-    if conversation is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Conversation not found",
-        )
+        if conversation is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found",
+            )
 
     is_first_message = len(conversation.messages) == 0
-    
+    conversation_history = format_conversation_history(conversation.messages)
+
     user_message = Message(
         conversation_id=conversation_id,
         role="user",
@@ -114,7 +109,7 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
 
     config = {
         "configurable": {
-            "thread_id": conversation_id,
+            "thread_id": conversation_id
         }
     }
 
@@ -124,7 +119,10 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
         try:
 
             async for update in final_graph.astream(
-                {"user_query": query},
+                {
+                    "user_query": query,
+                    "conversation_history": conversation_history,
+                },
                 config=config,
                 stream_mode="updates",
             ):
