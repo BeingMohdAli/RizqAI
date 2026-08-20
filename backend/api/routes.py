@@ -3,7 +3,7 @@ from uuid import uuid4
 from datetime import datetime, timezone
 
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import FastAPI, APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,12 @@ from database.models import Conversation, Message
 from schemas.conversation import ChatRequest, ConversationListItem, MessageResponse
 from graph.graph import final_graph
 from helpers import serialize_node_output, generate_conversation_title
+
+
+app = FastAPI(
+    title="RizqAi",
+    version="1.0.0"
+)
 
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
