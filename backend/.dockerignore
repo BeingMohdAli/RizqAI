@@ -25,6 +25,10 @@ env/
 .mypy_cache/
 .coverage
 htmlcov/
+tests/
+
+# Database files
+*.db
 
 # OS files
 .DS_Store
