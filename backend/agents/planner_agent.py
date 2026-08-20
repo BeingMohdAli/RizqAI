@@ -16,12 +16,9 @@ async def planner_agent(state: GraphState) -> GraphState:
         planner_llm = llm.with_structured_output(PlannerState)
         prompt = ChatPromptTemplate.from_messages([
             ("system", PLANNER_PROMPT),
-            ("human", "Conversation history:\n{conversation_history}\n\nCurrent user request:\n{user_query}"),
+            ("human", "{user_query}"),
         ])
-        messages = await prompt.ainvoke({
-            "conversation_history": state.conversation_history or "(no previous messages)",
-            "user_query": state.user_query,
-        })
+        messages = await prompt.ainvoke({"user_query": state.user_query})
         plan = await planner_llm.ainvoke(messages)
 
     except Exception as e:

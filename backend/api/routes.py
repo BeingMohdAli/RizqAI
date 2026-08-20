@@ -12,7 +12,7 @@ from database.db import get_db
 from database.models import Conversation, Message
 from schemas.conversation import ChatRequest, ConversationListItem, MessageResponse
 from graph.graph import final_graph
-from .helpers import serialize_node_output, generate_conversation_title, format_conversation_history
+from .helpers import serialize_node_output, generate_conversation_title
 
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
@@ -93,7 +93,6 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
             )
 
     is_first_message = len(conversation.messages) == 0
-    conversation_history = format_conversation_history(conversation.messages)
 
     user_message = Message(
         conversation_id=conversation_id,
@@ -114,14 +113,12 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
     }
 
     async def event_generator():
-        last_agent_response = None
 
         try:
 
             async for update in final_graph.astream(
                 {
-                    "user_query": query,
-                    "conversation_history": conversation_history,
+                    "user_query": query
                 },
                 config=config,
                 stream_mode="updates",
@@ -134,22 +131,11 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
                         node_output or {},
                     )
 
-                    last_agent_response = event
 
                     yield (
                         f"data: "
                         f"{json.dumps(event)}\n\n"
                     )
-
-            if last_agent_response is not None:
-
-                assistant_message = Message(
-                    conversation_id=conversation_id,
-                    role="assistant",
-                    content=json.dumps(last_agent_response),
-                )
-
-                db.add(assistant_message)
 
             conversation.updated_at = datetime.now(timezone.utc)
             db.commit()
