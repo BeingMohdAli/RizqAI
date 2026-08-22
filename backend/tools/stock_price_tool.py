@@ -1,6 +1,6 @@
 import yfinance as yf
 from langchain_core.tools import tool
-from helpers import resolve_ticker_symbol
+from tools.helpers import resolve_ticker_symbol
 
 
 @tool
