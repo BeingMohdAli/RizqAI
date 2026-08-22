@@ -3,7 +3,7 @@ from uuid import uuid4
 from datetime import datetime, timezone
 
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from database.db import get_db
 from database.models import Conversation, Message
 from schemas.conversation import ChatRequest, ConversationListItem, MessageResponse
-from graph.graph import final_graph
 from .helpers import serialize_node_output, generate_conversation_title
 
 
@@ -34,7 +33,7 @@ def get_conversations(db: Session = Depends(get_db)):
     )
 
 
-@router.get("/{conversation_id}/messages", response_model=list[MessageResponse],)
+@router.get("/{conversation_id}/messages", response_model=list[MessageResponse])
 def get_messages(conversation_id: str, db: Session = Depends(get_db)):
     conversation = (
         db.query(Conversation)
@@ -56,11 +55,12 @@ def get_messages(conversation_id: str, db: Session = Depends(get_db)):
     )
 
 
-
 @router.post("/messages/stream")
-async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
+async def analyze_stream(
+    request: Request, payload: ChatRequest, db: Session = Depends(get_db)
+) -> StreamingResponse:
 
-    query = request.query.strip()
+    query = payload.query.strip()
 
     if not query:
         raise HTTPException(
@@ -68,9 +68,10 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
             detail="Query must not be empty",
         )
 
-    conversation_id = request.conversation_id
+    conversation_id = payload.conversation_id
+    is_new_conversation = conversation_id is None
 
-    if conversation_id is None:
+    if is_new_conversation:
 
         conversation_id = str(uuid4())
         conversation = Conversation(
@@ -112,11 +113,25 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
         }
     }
 
+    # The compiled graph (with its AsyncSqliteSaver checkpointer) is built
+    # once at server startup -- see main.py's lifespan handler -- and stashed
+    # on app.state, since it can't be created at plain module-import time.
+    graph = request.app.state.graph
+
     async def event_generator():
+
+        # Tell the frontend which conversation this stream belongs to, so a
+        # brand-new chat can update its URL/state without waiting for "done".
+        yield (
+            f"data: "
+            f"{json.dumps({'node': 'conversation', 'conversation_id': conversation_id})}\n\n"
+        )
+
+        final_state: dict = {}
 
         try:
 
-            async for update in final_graph.astream(
+            async for update in graph.astream(
                 {
                     "user_query": query
                 },
@@ -126,16 +141,27 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
 
                 for node_name, node_output in update.items():
 
+                    if node_output:
+                        final_state.update(node_output)
+
                     event = serialize_node_output(
                         node_name,
                         node_output or {},
                     )
 
-
                     yield (
                         f"data: "
                         f"{json.dumps(event)}\n\n"
                     )
+
+            # Persist the assistant's final answer so it survives a reload
+            # or a switch between conversations in the sidebar.
+            assistant_message = Message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=json.dumps(final_state, default=str),
+            )
+            db.add(assistant_message)
 
             conversation.updated_at = datetime.now(timezone.utc)
             db.commit()
