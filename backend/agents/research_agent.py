@@ -8,11 +8,14 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from config import llm
 from graph.state import GraphState
 from prompts.prompts import RESEARCH_PROMPT
-from tools.news_tools import get_company_news
-from tools.stock_tools import get_stock_snapshot
+from backend.tools.company_news_tool import get_company_news
+from backend.tools.company_info_tool import get_company_info
+from backend.tools.stock_price_tool import get_stock_price
 from schemas.research_state import ResearchData, ToolOutputDict
 
-TOOLS = [get_stock_snapshot, get_company_news]
+
+TOOLS = [get_stock_price, get_company_news, get_company_info]
+
 
 @traceable(name="research_agent")
 async def research_agent(state: GraphState) -> GraphState:
