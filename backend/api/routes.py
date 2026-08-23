@@ -113,15 +113,10 @@ async def analyze_stream(
         }
     }
 
-    # The compiled graph (with its AsyncSqliteSaver checkpointer) is built
-    # once at server startup -- see main.py's lifespan handler -- and stashed
-    # on app.state, since it can't be created at plain module-import time.
     graph = request.app.state.graph
 
     async def event_generator():
 
-        # Tell the frontend which conversation this stream belongs to, so a
-        # brand-new chat can update its URL/state without waiting for "done".
         yield (
             f"data: "
             f"{json.dumps({'node': 'conversation', 'conversation_id': conversation_id})}\n\n"
@@ -141,25 +136,24 @@ async def analyze_stream(
 
                 for node_name, node_output in update.items():
 
-                    if node_output:
-                        final_state.update(node_output)
-
                     event = serialize_node_output(
                         node_name,
                         node_output or {},
                     )
+
+                    payload_data = event.get("data") or {}
+                    if payload_data:
+                        final_state.update(payload_data)
 
                     yield (
                         f"data: "
                         f"{json.dumps(event)}\n\n"
                     )
 
-            # Persist the assistant's final answer so it survives a reload
-            # or a switch between conversations in the sidebar.
             assistant_message = Message(
                 conversation_id=conversation_id,
                 role="assistant",
-                content=json.dumps(final_state, default=str),
+                content=json.dumps(final_state),
             )
             db.add(assistant_message)
 

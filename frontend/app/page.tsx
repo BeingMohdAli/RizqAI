@@ -11,7 +11,6 @@ import type { AgentTask, AnalysisTurn } from "@/lib/types";
 import ChatTurn from "@/components/ChatTurn";
 import QueryInput from "@/components/QueryInput";
 import Sidebar from "@/components/Sidebar";
-import HistoryMessage from "@/components/HistoryMessage";
 
 const AGENT_TASK_VALUES: AgentTask[] = [
   "research_agent",
@@ -71,42 +70,85 @@ function applyEvent(turn: AnalysisTurn, event: StreamEvent): AnalysisTurn {
   return next;
 }
 
+function turnFromMessages(
+  userMsg: MessageRecord,
+  assistantMsg?: MessageRecord
+): AnalysisTurn {
+  const base = newTurn(userMsg.content);
+
+  if (!assistantMsg) {
+    return {
+      ...base,
+      status: "error",
+      error: "No response was saved for this turn.",
+    };
+  }
+
+  try {
+    const state = JSON.parse(assistantMsg.content);
+    return {
+      ...base,
+      status: state.success === false ? "error" : "done",
+      error:
+        state.success === false
+          ? state.error ?? "The desk hit a snag."
+          : null,
+      plan: state.plan ?? null,
+      research: state.research ?? null,
+      risks: state.risks ?? null,
+      debate: state.debate ?? null,
+      thesis: state.thesis ?? null,
+      completedTasks: state.completed_tasks ?? [],
+    };
+  } catch {
+    return {
+      ...base,
+      status: "error",
+      error: "Couldn't parse the saved response for this turn.",
+    };
+  }
+}
+
 export default function Home() {
   const [turns, setTurns] = useState<AnalysisTurn[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  // Sidebar / conversation history state
-  const [activeConversationId, setActiveConversationId] = useState<
-    string | null
-  >(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [historyMessages, setHistoryMessages] = useState<MessageRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turns, historyMessages]);
+  }, [turns]);
 
   function handleNewChat() {
+    if (isStreaming) return;
     setTurns([]);
-    setHistoryMessages([]);
     setInput("");
     setActiveConversationId(null);
   }
 
   async function handleSelectConversation(id: string) {
-    if (id === activeConversationId) return;
+    if (isStreaming || id === activeConversationId) return;
 
     setActiveConversationId(id);
-    setTurns([]); // leave the live/streaming view, switch to history view
     setLoadingHistory(true);
+
     try {
       const messages = await getConversationMessages(id);
-      setHistoryMessages(messages);
+      const rebuilt: AnalysisTurn[] = [];
+
+      for (let i = 0; i < messages.length; i++) {
+        if (messages[i].role !== "user") continue;
+        const next = messages[i + 1];
+        const assistantMsg = next?.role === "assistant" ? next : undefined;
+        rebuilt.push(turnFromMessages(messages[i], assistantMsg));
+      }
+
+      setTurns(rebuilt);
     } catch {
-      setHistoryMessages([]);
+      setTurns([]);
     } finally {
       setLoadingHistory(false);
     }
@@ -115,10 +157,6 @@ export default function Home() {
   async function handleSubmit() {
     const query = input.trim();
     if (!query || isStreaming) return;
-
-    // Starting a new message while viewing history: drop the read-only
-    // history view and continue as a live turn on the same conversation.
-    setHistoryMessages([]);
 
     const turn = newTurn(query);
     setTurns((prev) => [...prev, turn]);
@@ -129,8 +167,9 @@ export default function Home() {
       await streamAnalysis(
         query,
         (event) => {
-          if (event.conversation_id && !activeConversationId) {
-            setActiveConversationId(event.conversation_id);
+          if (event.node === "conversation" && event.conversation_id) {
+            setActiveConversationId((prev) => prev ?? event.conversation_id!);
+            return;
           }
           setTurns((prev) =>
             prev.map((t) => (t.id === turn.id ? applyEvent(t, event) : t))
@@ -138,7 +177,6 @@ export default function Home() {
         },
         activeConversationId
       );
-      // New/updated conversation — let the sidebar refetch its list.
       setRefreshKey((k) => k + 1);
     } catch (err) {
       setTurns((prev) =>
@@ -157,8 +195,7 @@ export default function Home() {
     }
   }
 
-  const isViewingHistory = historyMessages.length > 0;
-  const isEmpty = turns.length === 0 && !isViewingHistory && !loadingHistory;
+  const isEmpty = turns.length === 0 && !loadingHistory;
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -214,12 +251,6 @@ export default function Home() {
                     Loading conversation…
                   </p>
                 )}
-
-                {isViewingHistory &&
-                  historyMessages.map((m) => (
-                    <HistoryMessage key={m.id} message={m} />
-                  ))}
-
                 {turns.map((turn) => (
                   <ChatTurn key={turn.id} turn={turn} />
                 ))}

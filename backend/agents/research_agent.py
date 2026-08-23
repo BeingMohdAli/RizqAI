@@ -14,6 +14,28 @@ from schemas.research_state import ResearchData, ToolOutputDict
 
 TOOLS = [get_stock_snapshot, get_company_news]
 
+
+def extract_text_content(content) -> str:
+    """AgentExecutor's `output` can be a plain string, or a list of mixed
+    content blocks (plain strings and citation/reference metadata dicts)
+    when the underlying model returns grounded/cited responses. This keeps
+    only the actual text portions and joins them, dropping citation noise.
+    """
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text", ""))
+        return "".join(parts)
+
+    return str(content)
+
+
 @traceable(name="research_agent")
 async def research_agent(state: GraphState) -> GraphState:
     """Extract company stocks data and company news using tools"""
@@ -48,7 +70,7 @@ async def research_agent(state: GraphState) -> GraphState:
 
         result = await agent_executor.ainvoke({"companies": companies})
 
-        tool_outputs : List[ToolOutputDict] = []
+        tool_outputs: List[ToolOutputDict] = []
         for action, observation in result.get("intermediate_steps", []):
             tool_outputs.append({
                 "tool": action.tool,
@@ -57,7 +79,7 @@ async def research_agent(state: GraphState) -> GraphState:
             })
 
         research_data = ResearchData(
-            summary=str(result.get("output", "")),
+            summary=extract_text_content(result.get("output", "")),
             tool_data=tool_outputs
         )
 

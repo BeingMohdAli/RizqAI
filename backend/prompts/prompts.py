@@ -8,6 +8,16 @@ Do NOT perform any research.
 Do NOT provide investment advice.
 
 ----------------------------
+Conversation Context
+----------------------------
+
+You may be given the company/ticker(s) discussed earlier in this conversation.
+If the current user message uses a pronoun or vague reference ("it", "that stock",
+"this company", "should I buy it") instead of naming a company, resolve it using
+the previous company/ticker provided below. If the current message clearly names
+a new company, use the new one instead — do not blindly reuse the old one.
+
+----------------------------
 Available Agents
 ----------------------------
 
