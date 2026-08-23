@@ -1,17 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  streamAnalysis,
-  getConversationMessages,
-  type StreamEvent,
-  type MessageRecord,
-} from "@/lib/api";
+import { streamAnalysis, type StreamEvent } from "@/lib/api";
 import type { AgentTask, AnalysisTurn } from "@/lib/types";
 import ChatTurn from "@/components/ChatTurn";
 import QueryInput from "@/components/QueryInput";
-import Sidebar from "@/components/Sidebar";
-import HistoryMessage from "@/components/HistoryMessage";
 
 const AGENT_TASK_VALUES: AgentTask[] = [
   "research_agent",
@@ -77,48 +70,13 @@ export default function Home() {
   const [isStreaming, setIsStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Sidebar / conversation history state
-  const [activeConversationId, setActiveConversationId] = useState<
-    string | null
-  >(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [historyMessages, setHistoryMessages] = useState<MessageRecord[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turns, historyMessages]);
-
-  function handleNewChat() {
-    setTurns([]);
-    setHistoryMessages([]);
-    setInput("");
-    setActiveConversationId(null);
-  }
-
-  async function handleSelectConversation(id: string) {
-    if (id === activeConversationId) return;
-
-    setActiveConversationId(id);
-    setTurns([]); // leave the live/streaming view, switch to history view
-    setLoadingHistory(true);
-    try {
-      const messages = await getConversationMessages(id);
-      setHistoryMessages(messages);
-    } catch {
-      setHistoryMessages([]);
-    } finally {
-      setLoadingHistory(false);
-    }
-  }
+  }, [turns]);
 
   async function handleSubmit() {
     const query = input.trim();
     if (!query || isStreaming) return;
-
-    // Starting a new message while viewing history: drop the read-only
-    // history view and continue as a live turn on the same conversation.
-    setHistoryMessages([]);
 
     const turn = newTurn(query);
     setTurns((prev) => [...prev, turn]);
@@ -126,20 +84,11 @@ export default function Home() {
     setIsStreaming(true);
 
     try {
-      await streamAnalysis(
-        query,
-        (event) => {
-          if (event.conversation_id && !activeConversationId) {
-            setActiveConversationId(event.conversation_id);
-          }
-          setTurns((prev) =>
-            prev.map((t) => (t.id === turn.id ? applyEvent(t, event) : t))
-          );
-        },
-        activeConversationId
-      );
-      // New/updated conversation — let the sidebar refetch its list.
-      setRefreshKey((k) => k + 1);
+      await streamAnalysis(query, (event) => {
+        setTurns((prev) =>
+          prev.map((t) => (t.id === turn.id ? applyEvent(t, event) : t))
+        );
+      });
     } catch (err) {
       setTurns((prev) =>
         prev.map((t) =>
@@ -157,87 +106,66 @@ export default function Home() {
     }
   }
 
-  const isViewingHistory = historyMessages.length > 0;
-  const isEmpty = turns.length === 0 && !isViewingHistory && !loadingHistory;
+  const isEmpty = turns.length === 0;
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        activeConversationId={activeConversationId}
-        onSelect={handleSelectConversation}
-        onNewChat={handleNewChat}
-        refreshKey={refreshKey}
-      />
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-10 border-b border-line-soft bg-ink/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-lg font-semibold tracking-tight text-text">
+              Rizq<span className="text-gold">AI</span>
+            </span>
+            <span className="hidden font-mono text-[11px] uppercase tracking-[0.12em] text-text-faint sm:inline">
+              the desk
+            </span>
+          </div>
+        </div>
+      </header>
 
-      <div className="flex min-h-screen flex-1 flex-col overflow-y-auto">
-        <header className="sticky top-0 z-10 border-b border-line-soft bg-ink/80 backdrop-blur-md">
-          <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
-            <div className="flex items-baseline gap-2">
-              <span className="font-display text-lg font-semibold tracking-tight text-text">
-                Rizq<span className="text-gold">AI</span>
-              </span>
-              <span className="hidden font-mono text-[11px] uppercase tracking-[0.12em] text-text-faint sm:inline">
-                the desk
-              </span>
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
+        {isEmpty ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-8 py-16 text-center">
+            <div className="space-y-3">
+              <h1 className="font-display text-4xl italic leading-tight text-text sm:text-5xl">
+                Your desk, working.
+              </h1>
+              <p className="mx-auto max-w-md text-[15px] leading-relaxed text-text-muted">
+                Ask about a stock. A planner, a research analyst, a risk desk,
+                a bull, and a bear will each take a pass before the verdict
+                lands.
+              </p>
+            </div>
+            <div className="w-full max-w-xl">
+              <QueryInput
+                value={input}
+                onChange={setInput}
+                onSubmit={handleSubmit}
+                disabled={isStreaming}
+                showExamples
+              />
             </div>
           </div>
-        </header>
-
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
-          {isEmpty ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-8 py-16 text-center">
-              <div className="space-y-3">
-                <h1 className="font-display text-4xl italic leading-tight text-text sm:text-5xl">
-                  Your desk, working.
-                </h1>
-                <p className="mx-auto max-w-md text-[15px] leading-relaxed text-text-muted">
-                  Ask about a stock. A planner, a research analyst, a risk
-                  desk, a bull, and a bear will each take a pass before the
-                  verdict lands.
-                </p>
-              </div>
-              <div className="w-full max-w-xl">
-                <QueryInput
-                  value={input}
-                  onChange={setInput}
-                  onSubmit={handleSubmit}
-                  disabled={isStreaming}
-                  showExamples
-                />
-              </div>
+        ) : (
+          <>
+            <div className="flex-1 space-y-8 py-6">
+              {turns.map((turn) => (
+                <ChatTurn key={turn.id} turn={turn} />
+              ))}
+              <div ref={bottomRef} />
             </div>
-          ) : (
-            <>
-              <div className="flex-1 space-y-8 py-6">
-                {loadingHistory && (
-                  <p className="text-center text-xs text-text-faint">
-                    Loading conversation…
-                  </p>
-                )}
-
-                {isViewingHistory &&
-                  historyMessages.map((m) => (
-                    <HistoryMessage key={m.id} message={m} />
-                  ))}
-
-                {turns.map((turn) => (
-                  <ChatTurn key={turn.id} turn={turn} />
-                ))}
-                <div ref={bottomRef} />
-              </div>
-              <div className="sticky bottom-0 -mx-4 bg-gradient-to-t from-ink via-ink/95 to-transparent px-4 pb-6 pt-8 sm:-mx-6 sm:px-6">
-                <QueryInput
-                  value={input}
-                  onChange={setInput}
-                  onSubmit={handleSubmit}
-                  disabled={isStreaming}
-                  showExamples={false}
-                />
-              </div>
-            </>
-          )}
-        </main>
-      </div>
+            <div className="sticky bottom-0 -mx-4 bg-gradient-to-t from-ink via-ink/95 to-transparent px-4 pb-6 pt-8 sm:-mx-6 sm:px-6">
+              <QueryInput
+                value={input}
+                onChange={setInput}
+                onSubmit={handleSubmit}
+                disabled={isStreaming}
+                showExamples={false}
+              />
+            </div>
+          </>
+        )}
+      </main>
     </div>
   );
 }
