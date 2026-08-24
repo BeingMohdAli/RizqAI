@@ -1,6 +1,6 @@
 from config import llm
 from graph.state import GraphState
-from prompts.prompts import DEBATE_PROMPT
+from prompts.debate_prompt import DEBATE_PROMPT
 from schemas.debate_state import DebateAgent
 
 from langchain_core.prompts import ChatPromptTemplate

@@ -1,6 +1,6 @@
 from config import llm
 from graph.state import GraphState
-from prompts.prompts import PLANNER_PROMPT
+from prompts.planner_prompt import PLANNER_PROMPT
 from schemas.planner_state import PlannerState
 
 from langchain_core.prompts import ChatPromptTemplate

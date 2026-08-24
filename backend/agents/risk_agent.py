@@ -1,6 +1,6 @@
 from config import llm
 from graph.state import GraphState
-from prompts.prompts import RISK_PROMPT
+from prompts.risk_prompt import RISK_PROMPT
 from schemas.risk_state import RiskState
 
 from langchain_core.prompts import ChatPromptTemplate
