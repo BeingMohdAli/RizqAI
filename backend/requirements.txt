@@ -6,10 +6,11 @@ langgraph-checkpoint-sqlite==3.1.1
 SQLAlchemy==2.0.51
 python-dotenv==1.2.1
 pydantic==2.12.5
-yfinance
-newsapi-python
-fastapi
-uvicorn[standard]
+yfinance==1.5.2
+newsapi-python==0.2.7
+fastapi==0.141.1
+uvicorn[standard]==0.52.0
+aiosqlite==0.22.1
 
 ## Used for test files
 httpx2==2.12.0
