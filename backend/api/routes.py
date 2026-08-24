@@ -111,7 +111,7 @@ async def analyze_stream(chat_request: ChatRequest, request: Request,  db: Sessi
         }
     }
 
-    graph = request.app.graph.state
+    graph = request.app.state.graph
 
     async def event_generator():
 
