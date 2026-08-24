@@ -3,7 +3,7 @@ from uuid import uuid4
 from datetime import datetime, timezone
 
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from database.db import get_db
 from database.models import Conversation, Message
 from schemas.conversation import ChatRequest, ConversationListItem, MessageResponse
-from graph.graph import final_graph
 from .helpers import serialize_node_output, generate_conversation_title
 
 
@@ -58,9 +57,9 @@ def get_messages(conversation_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/messages/stream")
-async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
+async def analyze_stream(chat_request: ChatRequest, request: Request,  db: Session = Depends(get_db)) -> StreamingResponse:
 
-    query = request.query.strip()
+    query = chat_request.query.strip()
 
     if not query:
         raise HTTPException(
@@ -68,7 +67,7 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
             detail="Query must not be empty",
         )
 
-    conversation_id = request.conversation_id
+    conversation_id = chat_request.conversation_id
 
     if conversation_id is None:
 
@@ -112,11 +111,13 @@ async def analyze_stream(request: ChatRequest, db: Session = Depends(get_db)) ->
         }
     }
 
+    graph = request.app.graph.state
+
     async def event_generator():
 
         try:
 
-            async for update in final_graph.astream(
+            async for update in graph.astream(
                 {
                     "user_query": query
                 },
