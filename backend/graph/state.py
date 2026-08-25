@@ -8,6 +8,7 @@ from schemas.research_state import ResearchData
 from schemas.risk_state import RiskState
 from schemas.debate_state import DebateAgent
 from schemas.thesis_state import ThesisAgent
+from schemas.general_finance_state import GeneralFinanceAnswer
 
 
 class GraphState(BaseModel):
@@ -21,3 +22,4 @@ class GraphState(BaseModel):
     risks: RiskState | None = None
     debate: DebateAgent | None = None
     thesis: ThesisAgent | None = None
+    general_finance: GeneralFinanceAnswer | None = None
