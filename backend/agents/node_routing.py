@@ -30,7 +30,7 @@ def route_after_guardrail(state: GraphState):
         return "planner_agent"
 
     if state.guardrail.category == "general_finance":
-        return "general_finance"
+        return "general_finance_agent"
 
     if state.guardrail.category == "irrelevant":
         return END
