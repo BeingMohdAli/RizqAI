@@ -38,36 +38,15 @@ routing_map = {
 }
 
 
-graph_builder.add_conditional_edges(
+for agent in [
     "planner_agent",
-    route_next_agent,
-    routing_map
-)
-
-
-graph_builder.add_conditional_edges(
     "research_agent",
-    route_next_agent,
-    routing_map
-)
-
-
-graph_builder.add_conditional_edges(
     "risk_agent",
-    route_next_agent,
-    routing_map
-)
-
-
-graph_builder.add_conditional_edges(
     "debate_agent",
-    route_next_agent,
-    routing_map
-)
-
-
-graph_builder.add_conditional_edges(
     "thesis_agent",
-    route_next_agent,
-    routing_map
-)
+]:
+    graph_builder.add_conditional_edges(
+        agent,
+        route_next_agent,
+        routing_map,
+    )

@@ -2,6 +2,7 @@ from typing import Annotated
 from operator import add
 from pydantic import BaseModel, Field
 
+
 from schemas.guardrail_state import GuardrailDecision
 from schemas.planner_state import PlannerState
 from schemas.research_state import ResearchData

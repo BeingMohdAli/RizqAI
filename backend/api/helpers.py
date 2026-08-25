@@ -1,4 +1,4 @@
-from database.models import Message
+
 
 def serialize_node_output(node_name: str, node_output: dict) -> dict:
     """Convert one node's raw LangGraph output (which may contain Pydantic

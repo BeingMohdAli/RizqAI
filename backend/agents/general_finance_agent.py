@@ -3,6 +3,7 @@ from graph.state import GraphState
 from prompts.general_finance_prompt import GENERAL_FINANCE_PROMPT
 from schemas.general_finance_state import GeneralFinanceAnswer
 
+
 from langchain_core.prompts import ChatPromptTemplate
 from langsmith import traceable
 

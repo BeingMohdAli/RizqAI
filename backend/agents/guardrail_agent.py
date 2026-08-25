@@ -3,8 +3,10 @@ from graph.state import GraphState
 from prompts.guardrail_prompt import GUARDRAIL_PROMPT
 from schemas.guardrail_state import GuardrailDecision
 
+
 from langchain_core.prompts import ChatPromptTemplate
 from langsmith import traceable
+
 
 @traceable(name="guardrail_agent")
 async def guardrail_agent(state: GraphState) -> GraphState:

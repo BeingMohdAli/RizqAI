@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Literal, List
 
+
 class RiskState(BaseModel):
     risk_score: int = Field(
         description="The calculated numerical risk score of the investment, scaled on a strict range from 1 (lowest risk) to 10 (highest risk).", 

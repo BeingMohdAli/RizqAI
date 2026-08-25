@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Literal, List
 
+
 class ThesisAgent(BaseModel):
     recommendation: Literal["BUY", "HOLD", "SELL", "WATCH"] = Field(
         description="The final actionable investment directive based on the comprehensive synthesis of all agent findings."
