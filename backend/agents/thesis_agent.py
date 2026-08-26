@@ -2,7 +2,10 @@ from config import llm
 from graph.state import GraphState
 from prompts.thesis_prompt import THESIS_PROMPT
 from schemas.thesis_state import ThesisAgent
+
+
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import AIMessage
 from langsmith import traceable
 
 
@@ -51,5 +54,8 @@ async def thesis_agent(state: GraphState) -> GraphState:
     return {
         "success": True ,
         "thesis": thesis_analysis,
+        "messages": [
+            AIMessage(content=f"Thesis Agent Output: \n{thesis_analysis}")
+        ],
         "completed_tasks": ["thesis_agent"]
     }

@@ -4,6 +4,7 @@ from prompts.risk_prompt import RISK_PROMPT
 from schemas.risk_state import RiskState
 
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import AIMessage
 from langsmith import traceable
 
 
@@ -43,5 +44,8 @@ async def risk_agent(state: GraphState) -> GraphState:
     return {
         "success": True ,
         "risks": risk_analysis,
-        "completed_tasks": ["risk_agent"]
+        "messages": [
+            AIMessage(content=f"Risk Agent Output: \n{risk_analysis}")
+        ],
+        "completed_tasks": ["risk_agent"],
     }

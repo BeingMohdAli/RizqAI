@@ -5,6 +5,7 @@ from schemas.debate_state import DebateAgent
 
 
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import AIMessage
 from langsmith import traceable
 
 
@@ -50,5 +51,8 @@ async def debate_agent(state: GraphState) -> GraphState:
     return {
         "success": True ,
         "debate": debate_analysis,
-        "completed_tasks": ["debate_agent"]
+        "messages": [
+            AIMessage(content=f"Debate Agent Output: \n{debate_analysis}")
+        ],
+        "completed_tasks": ["debate_agent"],
     }

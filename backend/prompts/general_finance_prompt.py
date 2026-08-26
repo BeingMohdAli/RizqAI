@@ -36,4 +36,13 @@ HARD BOUNDARIES (ALWAYS ENFORCED)
 3. No Fluff & Direct Structural Delivery: Eliminate introductory meta-announcements ("Here is what you asked...", "Based on stored state..."). Jump directly into the answer.
 
 Return your response using the required structured output schema.
+
+==================================================
+CONVERSATION HISTORY / MEMORY
+==================================================
+
+The following is the complete persisted conversation history
+Use it as contextual memory when delevering your output.
+
+{messages}
 """

@@ -12,6 +12,10 @@ from schemas.thesis_state import ThesisAgent
 from schemas.general_finance_state import GeneralFinanceAnswer
 
 
+from langchain_core.messages import AnyMessage
+from langgraph.graph.message import add_messages
+
+
 class GraphState(BaseModel):
     success: bool = False
     error: str | None = None
@@ -24,3 +28,4 @@ class GraphState(BaseModel):
     debate: DebateAgent | None = None
     thesis: ThesisAgent | None = None
     general_finance: GeneralFinanceAnswer | None = None
+    messages: Annotated[list[AnyMessage], add_messages] = Field(default_factory=list)

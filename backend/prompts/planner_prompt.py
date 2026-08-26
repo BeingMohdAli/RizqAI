@@ -31,10 +31,19 @@ Output must conform to the following schema:
 3. MEMORY REUSE & INVALIDATION
 ==================================================
 
-Re-run an agent ONLY IF:
+Use the conversation history and Re-run an agent ONLY IF:
 1. Output is missing for the entity.
 2. User explicitly requests real-time data ("now", "today", "live", "current") -> Re-run research_agent.
 3. Upstream agent produced incomplete data or failed.
 
 Otherwise, REUSE existing outputs and set tasks = [].
+
+==================================================
+CONVERSATION HISTORY / MEMORY
+==================================================
+
+The following is the complete persisted conversation history
+Use it as contextual memory when making your planning decision.
+
+{messages}
 """

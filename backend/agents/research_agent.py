@@ -4,6 +4,7 @@ from langsmith import traceable
 from langchain_classic.agents.agent import AgentExecutor
 from langchain_classic.agents.tool_calling_agent.base import create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import AIMessage
 
 from config import llm
 from graph.state import GraphState
@@ -73,5 +74,8 @@ async def research_agent(state: GraphState) -> GraphState:
     return {
         "success": True,
         "research": research_data,
+        "messages": [
+            AIMessage(content=f"Research Agent Output: \n{research_data}")
+        ],
         "completed_tasks": ["research_agent"]
     }

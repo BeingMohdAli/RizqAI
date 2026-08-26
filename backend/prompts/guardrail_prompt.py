@@ -42,4 +42,13 @@ OUTPUT FORMAT
 Return ONLY the structured output:
 - category: one of ["general_finance", "irrelevant", "company_analysis"]
 - reason: one short sentence explaining the routing decision based on intent and memory state inspection.
+
+==================================================
+CONVERSATION HISTORY / MEMORY
+==================================================
+
+The following is the complete persisted conversation history
+Use it as contextual memory when making your decision.
+
+{messages}
 """
