@@ -11,5 +11,12 @@ class Agent(str, Enum):
 
 
 class PlannerState(BaseModel):
-    companies: List[str] = Field(default_factory=list, description="Stock ticker symbols for the companies mentioned by the user (e.g. 'NVDA', not 'NVIDIA').")
-    tasks: List[Agent] = Field(description="Agents that should be executed.")
+
+    companies: List[str] = Field(
+        default_factory=list,
+        description="Resolved company names or tickers referenced in prompt or context.",
+    )
+
+    tasks: List[Agent] = Field(default_factory=list,
+        description="Ordered list of missing/stale agents to execute.",
+    )

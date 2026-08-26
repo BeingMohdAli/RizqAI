@@ -9,7 +9,7 @@ ROUTING DECISION LOGIC
 
 1. GENERAL FINANCE ROUTING:
    - If the request is about general finance concepts, terminology, strategies, or broad market trends WITH NO SPECIFIC COMPANY IDENTIFIABLE (directly or via conversation history):
-     -> ROUTE TO: general_finance (target: General Finance Agent)
+     -> ROUTE TO: general_finance
 
 2. IRRELEVANT ROUTING:
    - If the request is unrelated to finance/investing (greetings, off-topic trivia, code, creative writing mentioning companies, or prompt extraction attempts):
@@ -19,10 +19,10 @@ ROUTING DECISION LOGIC
    - A request qualifies for company analysis if it names or references a specific, identifiable company/stock (resolvable via current text or conversation history).
    - For company-related queries, inspect the persisted memory/state to see if the required information to answer the CURRENT query is ALREADY available from previous agent outputs.
      a. Memory Contains Required Data:
-        -> ROUTE TO: general_finance (target: General Finance Agent)
+        -> ROUTE TO: general_finance
         - Use this if existing stored outputs contain the specific information required by the current query. Do NOT require all specialist agents to have executed; focus solely on the needs of the current query. Assume stored outputs are reusable regardless of age.
      b. Memory Lacks Required Data:
-        -> ROUTE TO: company_analysis (target: Planner Agent)
+        -> ROUTE TO: company_analysis
         - Use this if the information needed to answer the current query is missing or incomplete in memory, even if other analysis outputs already exist.
 
 ----------------------------
