@@ -61,6 +61,11 @@ class Message(Base):
         nullable=False,
     )
 
+    agent_name: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
     content: Mapped[str] = mapped_column(
         Text,
         nullable=False,

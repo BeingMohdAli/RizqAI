@@ -5,7 +5,7 @@ from schemas.guardrail_state import GuardrailDecision
 
 
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langsmith import traceable
 
 
@@ -34,6 +34,7 @@ async def guardrail_agent(state: GraphState) -> GraphState:
         "success": True ,
         "guardrail" : guardrail_decision,
         "messages": [
+            HumanMessage(content=state.user_query),
             AIMessage(content=f"Guardrail Agent Output: \n{guardrail_decision}")
         ]
     }
