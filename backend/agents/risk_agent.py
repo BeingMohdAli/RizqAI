@@ -47,5 +47,5 @@ async def risk_agent(state: GraphState) -> GraphState:
         "messages": [
             AIMessage(content=f"Risk Agent Output: \n{risk_analysis}")
         ],
-        "completed_tasks": ["risk_agent"],
+        "completed_tasks": state.completed_tasks + ["risk_agent"],
     }

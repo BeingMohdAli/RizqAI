@@ -36,5 +36,4 @@ async def general_finance_agent(state: GraphState) -> GraphState:
         "messages": [
             AIMessage(content=f"General Finance Agent Output: \n{answer}")
         ],
-        "completed_tasks": ["general_finance_agent"]
     }

@@ -12,6 +12,7 @@ from prompts.research_prompt import RESEARCH_PROMPT
 from tools.company_news_tool import get_company_news
 from tools.company_info_tool import get_company_info
 from tools.stock_price_tool import get_stock_price
+
 from schemas.research_state import ResearchData, ToolOutputDict
 
 
@@ -77,5 +78,5 @@ async def research_agent(state: GraphState) -> GraphState:
         "messages": [
             AIMessage(content=f"Research Agent Output: \n{research_data}")
         ],
-        "completed_tasks": ["research_agent"]
+        "completed_tasks": state.completed_tasks + ["research_agent"]
     }

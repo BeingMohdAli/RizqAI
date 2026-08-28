@@ -172,7 +172,7 @@ async def analyze_stream(chat_request: ChatRequest, request: Request,  db: Sessi
                             conversation_id=conversation_id,
                             role="assistant",
                             agent_name=node_name,
-                            content=json.dumps(event)
+                            content=content
                         )
 
                         db.add(assistant_message)
@@ -197,13 +197,8 @@ async def analyze_stream(chat_request: ChatRequest, request: Request,  db: Sessi
 
             db.rollback()
 
-            yield (
-                f"data: "
-                f"{json.dumps({
-                    'node': 'error',
-                    'error': str(e),
-                })}\n\n"
-            )
+            error_payload = json.dumps({"node": "error", "error": str(e)})
+            yield f"data: {error_payload}\n\n"
 
     return StreamingResponse(
         event_generator(),

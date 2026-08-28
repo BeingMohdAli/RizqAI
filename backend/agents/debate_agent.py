@@ -54,5 +54,5 @@ async def debate_agent(state: GraphState) -> GraphState:
         "messages": [
             AIMessage(content=f"Debate Agent Output: \n{debate_analysis}")
         ],
-        "completed_tasks": ["debate_agent"],
+        "completed_tasks": state.completed_tasks + ["debate_agent"],
     }

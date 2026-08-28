@@ -33,6 +33,7 @@ async def planner_agent(state: GraphState) -> GraphState:
     return {
         "success": True ,
         "plan" : plan,
+        "completed_tasks": [],
         "messages": [
             AIMessage(content=f"Research Agent Output: \n{plan}")
         ]

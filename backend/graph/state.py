@@ -1,5 +1,4 @@
-from typing import Annotated
-from operator import add
+from typing import Annotated, Dict
 from pydantic import BaseModel, Field
 
 
@@ -22,7 +21,7 @@ class GraphState(BaseModel):
     user_query: str = ""
     guardrail: GuardrailDecision | None = None
     plan: PlannerState | None = None
-    completed_tasks: Annotated[list[str], add] = Field(default_factory=list)
+    completed_tasks: list[str] = Field(default_factory=list)
     research: ResearchData | None = None
     risks: RiskState | None = None
     debate: DebateAgent | None = None

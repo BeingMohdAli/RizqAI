@@ -57,5 +57,5 @@ async def thesis_agent(state: GraphState) -> GraphState:
         "messages": [
             AIMessage(content=f"Thesis Agent Output: \n{thesis_analysis}")
         ],
-        "completed_tasks": ["thesis_agent"]
+        "completed_tasks": state.completed_tasks + ["thesis_agent"]
     }
