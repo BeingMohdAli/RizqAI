@@ -20,7 +20,7 @@ NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
 primary_llm = ChatGoogleGenerativeAI(
     model="gemini-3.7-flash",
-    temperature="0.2",
+    temperature=0.2,
     api_key=GOOGLE_API_KEY,
 )
 
