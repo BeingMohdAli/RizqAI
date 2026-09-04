@@ -2,18 +2,43 @@ import json
 
 
 def serialize_node_output(node_name: str, node_output: dict) -> dict:
-    """Convert one node's raw LangGraph output (which may contain Pydantic
-    model instances, e.g. PlannerState/ResearchData/...) into plain JSON.
-    """
-    data = {}
-    for key, value in node_output.items():
-        if key =="messages":
-            continue
+    """Convert LangGraph node output into JSON-serializable data."""
+
+    def serialize(value):
+        # Pydantic models
         if hasattr(value, "model_dump"):
-            data[key] = value.model_dump()
-        else:
-            data[key] = value
-    return {"node": node_name, "data": data}
+            return value.model_dump(mode="json")
+
+        # LangChain messages
+        if hasattr(value, "type") and hasattr(value, "content"):
+            return {
+                "type": value.type,
+                "content": value.content,
+            }
+
+        # Lists / tuples
+        if isinstance(value, (list, tuple)):
+            return [serialize(item) for item in value]
+
+        # Dictionaries
+        if isinstance(value, dict):
+            return {
+                key: serialize(item)
+                for key, item in value.items()
+            }
+
+        # Primitive JSON-compatible values
+        return value
+
+    data = {
+        key: serialize(value)
+        for key, value in node_output.items()
+    }
+
+    return {
+        "node": node_name,
+        "data": data,
+    }
 
 
 def generate_conversation_title(query: str, max_length: int = 60) -> str:
