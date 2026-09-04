@@ -15,9 +15,7 @@ export function formatPrice(value: unknown, currency?: unknown): string | null {
 }
 
 export function titleCase(input: string): string {
-  return input
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return input.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function timeAgo(iso: unknown): string | null {
@@ -25,9 +23,12 @@ export function timeAgo(iso: unknown): string | null {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
   const diffMs = Date.now() - date.getTime();
-  const hours = Math.round(diffMs / 3_600_000);
-  if (hours < 1) return "just now";
+  const minutes = Math.round(diffMs / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   const days = Math.round(hours / 24);
-  return `${days}d ago`;
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
