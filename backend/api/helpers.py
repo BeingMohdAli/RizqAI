@@ -7,6 +7,8 @@ def serialize_node_output(node_name: str, node_output: dict) -> dict:
     """
     data = {}
     for key, value in node_output.items():
+        if key =="messages":
+            continue
         if hasattr(value, "model_dump"):
             data[key] = value.model_dump()
         else:

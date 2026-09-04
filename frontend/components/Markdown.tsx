@@ -71,13 +71,13 @@ export default function Markdown({
   className?: string;
 }) {
   return (
-    <div className={className}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={inline ? inlineComponents : blockComponents}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
+  <div className={`break-words ${className}`}>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={inline ? inlineComponents : blockComponents}
+    >
+      {content}
+    </ReactMarkdown>
+  </div>
+);
 }

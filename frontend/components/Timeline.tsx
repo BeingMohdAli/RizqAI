@@ -2,20 +2,10 @@ import { AGENT_STEPS, type AnalysisTurn } from "@/lib/types";
 
 type StepStatus = "pending" | "active" | "done" | "error" | "skipped";
 
-function getStatus(turn: AnalysisTurn, index: number): StepStatus {
-  const step = AGENT_STEPS[index];
-  const requested = turn.plan?.tasks.includes(step.key) ?? true;
-
-  if (!requested) return "skipped";
-  if (turn.completedTasks.includes(step.key)) return "done";
-
-  const allBeforeDone = AGENT_STEPS.slice(0, index).every(
-    (s, i) => getStatus(turn, i) === "done" || getStatus(turn, i) === "skipped"
-  );
-
-  if (turn.status === "error" && allBeforeDone) return "error";
-  if (turn.status === "streaming" && allBeforeDone) return "active";
-  return "pending";
+interface Step {
+  key: string;
+  label: string;
+  status: StepStatus;
 }
 
 const DOT_STYLES: Record<StepStatus, string> = {
@@ -34,35 +24,78 @@ const LABEL_STYLES: Record<StepStatus, string> = {
   skipped: "text-text-faint opacity-50",
 };
 
-export default function Timeline({ turn }: { turn: AnalysisTurn }) {
-  const planStatus: StepStatus = turn.plan
+/**
+ * Every turn passes through guardrail_agent first, which is why "Screen"
+ * always leads. What comes after depends on the guardrail's category:
+ * irrelevant -> nothing more; general_finance -> a single answer step;
+ * company_analysis -> Plan, then whichever of research/risk/debate/thesis
+ * the planner actually scheduled.
+ */
+function buildSteps(turn: AnalysisTurn): Step[] {
+  const isStreaming = turn.status === "streaming";
+  const isError = turn.status === "error";
+
+  const screenStatus: StepStatus = turn.guardrail
     ? "done"
-    : turn.status === "error"
-      ? "error"
-      : "active";
+    : turn.fromHistory
+      ? "done" // history can't exist without having passed the screen
+      : isError
+        ? "error"
+        : isStreaming
+          ? "active"
+          : "pending";
+
+  const steps: Step[] = [{ key: "screen", label: "Screen", status: screenStatus }];
+  if (screenStatus !== "done") return steps;
+
+  const category = turn.guardrail?.category;
+
+  if (category === "irrelevant") return steps;
+
+  const isGeneralFinance = category === "general_finance" || (!category && turn.generalFinance);
+  if (isGeneralFinance) {
+    steps.push({
+      key: "answer",
+      label: "Answer",
+      status: turn.generalFinance ? "done" : isError ? "error" : "active",
+    });
+    return steps;
+  }
+
+  const isCompanyAnalysis = category === "company_analysis" || (!category && turn.plan);
+  if (isCompanyAnalysis) {
+    const planStatus: StepStatus = turn.plan ? "done" : isError ? "error" : "active";
+    steps.push({ key: "plan", label: "Plan", status: planStatus });
+    if (!turn.plan) return steps;
+
+    let priorDone = true;
+    for (const step of AGENT_STEPS) {
+      if (!turn.plan.tasks.includes(step.key)) continue;
+      let status: StepStatus;
+      if (turn.completedTasks.includes(step.key)) status = "done";
+      else if (isError && priorDone) status = "error";
+      else if (isStreaming && priorDone) status = "active";
+      else status = "pending";
+      steps.push({ key: step.key, label: step.label, status });
+      priorDone = status === "done";
+    }
+  }
+
+  return steps;
+}
+
+export default function Timeline({ turn }: { turn: AnalysisTurn }) {
+  const steps = buildSteps(turn);
 
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 font-mono text-[11px] uppercase tracking-[0.12em]">
-      <div className="flex shrink-0 items-center gap-1.5">
-        <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full border ${DOT_STYLES[planStatus]}`}
-        />
-        <span className={LABEL_STYLES[planStatus]}>Plan</span>
-      </div>
-
-      {AGENT_STEPS.map((step, i) => {
-        const status = getStatus(turn, i);
-        if (status === "skipped") return null;
-        return (
-          <div key={step.key} className="flex shrink-0 items-center gap-1.5">
-            <span className="h-px w-3 shrink-0 bg-line" />
-            <span
-              className={`h-1.5 w-1.5 shrink-0 rounded-full border ${DOT_STYLES[status]}`}
-            />
-            <span className={LABEL_STYLES[status]}>{step.label}</span>
-          </div>
-        );
-      })}
+      {steps.map((step, i) => (
+        <div key={step.key} className="flex shrink-0 items-center gap-1.5">
+          {i > 0 && <span className="h-px w-3 shrink-0 bg-line" />}
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full border ${DOT_STYLES[step.status]}`} />
+          <span className={LABEL_STYLES[step.status]}>{step.label}</span>
+        </div>
+      ))}
     </div>
   );
 }

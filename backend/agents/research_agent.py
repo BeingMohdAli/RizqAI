@@ -19,6 +19,24 @@ from schemas.research_state import ResearchData, ToolOutputDict
 TOOLS = [get_stock_price, get_company_news, get_company_info]
 
 
+def extract_output_text(output) -> str:
+    """AgentExecutor's `output` is a plain string for most models, but
+    reasoning models (e.g. Gemini 3.x) return a list of content blocks
+    instead — extract just the visible text, ignoring reasoning/signature
+    metadata blocks."""
+    if isinstance(output, str):
+        return output
+    if isinstance(output, list):
+        parts = []
+        for block in output:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text", ""))
+            elif isinstance(block, str):
+                parts.append(block)
+        return "".join(parts)
+    return str(output)
+
+
 @traceable(name="research_agent")
 async def research_agent(state: GraphState) -> GraphState:
     """Extract company stocks data and company news using tools"""
@@ -62,7 +80,7 @@ async def research_agent(state: GraphState) -> GraphState:
             })
 
         research_data = ResearchData(
-            summary=str(result.get("output", "")),
+            summary=extract_output_text(result.get("output", "")),
             tool_data=tool_outputs
         )
 

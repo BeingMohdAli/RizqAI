@@ -20,7 +20,8 @@ NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
 primary_llm = ChatGoogleGenerativeAI(
     model="gemini-3.7-flash",
-    temperature="0.2",
+    temperature=1.0,
+    timeout=30,
     api_key=GOOGLE_API_KEY,
 )
 
@@ -28,6 +29,7 @@ primary_llm = ChatGoogleGenerativeAI(
 fallback_llm_1 = ChatMistralAI(
     model="mistral-large-latest",
     temperature=0.2,
+    timeout=30,
     api_key=MISTRAL_API_KEY
 )
 
@@ -35,6 +37,7 @@ fallback_llm_1 = ChatMistralAI(
 fallback_llm_2 = ChatGroq(
     model="openai/gpt-oss-20b",
     temperature=0.2,
+    timeout=30,
     api_key=GROQ_API_KEY
 )
 
