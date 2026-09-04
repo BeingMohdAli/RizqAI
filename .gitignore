@@ -153,6 +153,7 @@ activemq-data/
 # Environments
 .env
 .envrc
+.env.local
 .venv
 env/
 venv/
@@ -160,12 +161,15 @@ ENV/
 env.bak/
 venv.bak/
 
+
 # Spyder project settings
 .spyderproject
 .spyproject
 
 #database files
 *.db
+*.db-shm
+*.db-wal
 
 # Rope project settings
 .ropeproject
