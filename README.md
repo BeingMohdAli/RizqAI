@@ -1,3 +1,9 @@
+<div align="center">
+  <picture>
+    <img alt="RizqAI Logo" src="assets/logo.svg" width="90%">
+  </picture>
+</div>
+
 ```
 backend/
 
