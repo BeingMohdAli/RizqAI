@@ -4,13 +4,13 @@ import { useState } from "react";
 import type { StreamLogEntry } from "@/lib/types";
 
 const NODE_LABEL: Record<string, string> = {
-  guardrail_agent: "guardrail",
-  planner_agent: "planner",
-  research_agent: "research",
-  risk_agent: "risk",
-  debate_agent: "debate",
-  thesis_agent: "thesis",
-  general_finance_agent: "gen. finance",
+  guardrail_agent: "guardrail_agent",
+  planner_agent: "planner_agent",
+  research_agent: "research_agent",
+  risk_agent: "risk_agent",
+  debate_agent: "debate_agent",
+  thesis_agent: "thesis_agent",
+  general_finance_agent: "general_finance_agent",
   done: "stream",
   error: "stream",
 };
