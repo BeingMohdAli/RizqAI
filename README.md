@@ -1,6 +1,6 @@
 <div align="center">
   <picture>
-    <img alt="RizqAI Logo" src="assets/logo.svg" width="90%">
+    <img alt="RizqAI Logo" src="assets/banner.svg" width="100%">
   </picture>
 </div>
 
