@@ -523,22 +523,6 @@ RizqAI/
 
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
-```text
-MIT License
-
-Copyright (c) 2026 Gaohar Imran
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-```
-
 ---
 
 <a id="-author"></a>
@@ -550,12 +534,10 @@ This project was conceptualized, architected, and built in close technical colla
 
 #### **Gaohar Imran**
 - **GitHub**: [@gaoharimran29-glitch](https://github.com/gaoharimran29-glitch)
-- **Repository**: [gaoharimran29-glitch/RizqAI](https://github.com/gaoharimran29-glitch/RizqAI)
 - **Email**: [gaoharimran29@gmail.com](mailto:gaoharimran29@gmail.com)
 
 #### **Mohd Ali**
 - **GitHub**: [@BeingMohdAli](https://github.com/BeingMohdAli)
-- **Repository**: [BeingMohdAli/rizqai](https://github.com/BeingMohdAli/rizqai)
 - **Email**: [mohdalisaad868@gmail.com](mailto:mohdalisaad868@gmail.com)
 
 ### 🤝 Core Contributions & Collaborative Engineering
