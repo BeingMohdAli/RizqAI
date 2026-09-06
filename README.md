@@ -63,33 +63,33 @@ When a user submits a market query, RizqAI routes the request through a speciali
                   ┌─────────────────────┘            └──────────────────────┐
                   │ [company_analysis]                                      │ [general_finance]
                   ▼                                                         ▼
-      ┌──────────────────────┐                                 ┌─────────────────────────┐
-      │    Planner Agent     │                                 │  General Finance Agent  │
-      │(Gemini 3.7 + Fallbacks)                                │  (Concept / Note Q&A)   │
-      └──────────┬───────────┘                                 └────────────┬────────────┘
-                 │                                                          │
-                 ▼                                                          │
-     ┌────────────────────────┐                                             │
-     │     Research Agent     │ ◄── [yfinance API + NewsAPI Tools]          │
-     └───────────┬────────────┘                                             │
-                 │                                                          │
-                 ▼                                                          │
-     ┌────────────────────────┐                                             │
-     │       Risk Agent       │ ◄── [Downside / Volatility / Scoring]       │
-     └───────────┬────────────┘                                             │
-                 │                                                          │
-                 ▼                                                          │
-     ┌────────────────────────┐                                             │
-     │      Debate Agent      │ ◄── [Bull Case vs. Bear Case Clash]         │
-     └───────────┬────────────┘                                             │
-                 │                                                          │
-                 ▼                                                          │
-     ┌────────────────────────┐                                             │
-     │      Thesis Agent      │ ◄── [Recommendation / Confidence / Memo]    │
-     └───────────┬────────────┘                                             │
-                 │                                                          │
-                 └──────────────────────┐    ┌──────────────────────────────┘
-                                        ▼    ▼
+      ┌────────────────────────┐                                 ┌─────────────────────────┐
+      │    Planner Agent       │                                 │  General Finance Agent  │
+      │(Gemini 3.7 + Fallbacks)│                                 │  (Concept / Note Q&A)   │
+      └───────────┬────────────┘                                 └────────────┬────────────┘
+                  │                                                           │
+                  ▼                                                           │
+     ┌────────────────────────┐                                               │
+     │     Research Agent     │ ◄── [yfinance API + NewsAPI Tools]            │
+     └───────────┬────────────┘                                               │
+                 │                                                            │
+                 ▼                                                            │
+     ┌────────────────────────┐                                               │
+     │       Risk Agent       │ ◄── [Downside / Volatility / Scoring]         │
+     └───────────┬────────────┘                                               │
+                 │                                                            │
+                 ▼                                                            │
+     ┌────────────────────────┐                                               │
+     │      Debate Agent      │ ◄── [Bull Case vs. Bear Case Clash]           │
+     └───────────┬────────────┘                                               │
+                 │                                                            │
+                 ▼                                                            │
+     ┌────────────────────────┐                                               │
+     │      Thesis Agent      │ ◄── [Recommendation / Confidence / Memo]      │
+     └───────────┬────────────┘                                               │
+                 │                                                            │
+                 └──────────────────────┐     ┌───────────────────────────────┘
+                                        ▼     ▼
                                  ┌───────────────┐
                                  │  Final Output │
                                  │ (SSE Stream)  │
@@ -114,7 +114,7 @@ The system is engineered as an asynchronous decoupled architecture:
 - **Institutional Investment Verdict**: The `ThesisAgent` synthesizes all upstream telemetry into an actionable investment memo with a definitive stance (`BUY`, `HOLD`, `SELL`, `WATCH`), numerical confidence rating (`0-10`), macroeconomic rationale, and mandatory compliance disclaimers.
 - **Intelligent Semantic Guardrails**: Dedicated `GuardrailAgent` screening queries into `company_analysis`, `general_finance`, or `irrelevant`. Out-of-domain requests or prompt injection vectors are terminated early with explanatory feedback.
 - **Real-Time Token & Event Streaming**: Native SSE (`text/event-stream`) streaming pipeline pushing agent execution deltas directly to the web client with microsecond latency.
-- **Fault-Tolerant Tri-Tier LLM Fallbacks**: Resilience architecture chaining Google Gemini 3.7 Flash $\rightarrow$ Mistral Large $\rightarrow$ Groq LPU (GPT-OSS-20B), eliminating downtime caused by provider outages or rate limits.
+- **Fault-Tolerant Tri-Tier LLM Fallbacks**: Resilience architecture chaining Google Gemini 3.7 Flash $\rightarrow$ Groq LPU (GPT-OSS-120B) $\rightarrow$ OpenRouter (GPT-OSS-120B), eliminating downtime caused by provider outages or rate limits.
 - **Full-Stack Observability with LangSmith**: End-to-end `@traceable` instrumentation tracking agent run latencies, token consumption, tool input/output observations, and state checkpoints.
 
 ---
@@ -162,8 +162,8 @@ Ensure the following runtimes and toolchains are installed on your host system:
 - **Docker & Docker Compose** (Optional, for containerized deployments).
 - **API Credentials**:
   - [Google AI Studio API Key](https://aistudio.google.com/) (`GOOGLE_API_KEY`) for Gemini 3.7 Flash.
-  - [Mistral AI API Key](https://console.mistral.ai/) (`MISTRAL_API_KEY`) for Mistral Large.
   - [Groq Cloud API Key](https://console.groq.com/) (`GROQ_API_KEY`) for LPU-accelerated inference.
+  - [OpenRouter API Key](https://openrouter.ai/) (`OPENROUTER_API_KEY`) for model routing and fallback inference.
   - [NewsAPI Developer Key](https://newsapi.org/) (`NEWS_API_KEY`) for real-time news retrieval.
   - [LangSmith API Key](https://smith.langchain.com/) (`LANGCHAIN_API_KEY`) for telemetry and trace logging.
 
@@ -193,7 +193,7 @@ Populate the `.env` file with your credentials:
 ```ini
 # LLM Providers
 GOOGLE_API_KEY=your_gemini_api_key_here
-MISTRAL_API_KEY=your_mistral_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 GROQ_API_KEY=your_groq_api_key_here
 
 # External Tools
@@ -335,21 +335,21 @@ primary_llm = ChatGoogleGenerativeAI(
     model="gemini-3.7-flash",
     temperature=0.2,
     api_key=GOOGLE_API_KEY,
-    timeout=30,
+    timeout=30,  
 )
 
-fallback_llm_1 = ChatMistralAI(
-    model="mistral-large-latest",
+fallback_llm_1 = ChatGroq(
+    model="openai/gpt-oss-120b",
     temperature=0.2,
     timeout=30,
-    api_key=MISTRAL_API_KEY,
+    api_key=GROQ_API_KEY
 )
 
-fallback_llm_2 = ChatGroq(
-    model="openai/gpt-oss-20b",
+fallback_llm_2 = ChatOpenRouter(
+    model="openai/gpt-oss-120b",
     temperature=0.2,
     timeout=30,
-    api_key=GROQ_API_KEY,
+    api_key=OPENROUTER_API_KEY
 )
 
 # Unified fault-tolerant LLM pipeline
@@ -357,8 +357,8 @@ llm = primary_llm.with_fallbacks([fallback_llm_1, fallback_llm_2])
 ```
 
 - **Primary**: Google Gemini 3.7 Flash handles complex long-context reasoning with near-zero latency.
-- **Secondary**: Mistral Large acts as the first resilience layer if Gemini hits quota limits.
-- **Tertiary**: Groq Cloud running open-weights models (`openai/gpt-oss-20b`) on LPU hardware provides sub-second emergency failover.
+- **Secondary**: Groq Cloud running open-weights models (`openai/gpt-oss-120b`) if Gemini hits an error.
+- **Tertiary**: OpenRouter running (`openai/gpt-oss-120b`) as a redundant fallback if both primary and secondary providers fail.
 - **Guaranteed Timeouts**: Every model invocation strictly enforces an explicit 30-second timeout to prevent blocked graph execution.
 
 ### 2. Dedicated Low-Latency Guardrail Screening
