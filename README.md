@@ -52,6 +52,7 @@
 
 https://github.com/user-attachments/assets/4e7215b7-515b-4b2a-bc53-3eac89819100
 
+
 When a user submits a market or financial query, RizqAI routes the request through a specialized hierarchy of autonomous agents:
 
 ```
