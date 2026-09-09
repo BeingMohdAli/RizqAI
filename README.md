@@ -47,7 +47,7 @@
 
 **RizqAI** (derived from the Arabic *Rizq* — provision, sustenance) is an enterprise-grade, agentic equity research system designed to emulate an institutional investment committee. Rather than relying on monolithic LLM prompts that suffer from hallucinations, cognitive bias, and stale training data, RizqAI decomposes the financial research workflow into a deterministic, stateful multi-agent DAG (Directed Acyclic Graph) powered by **LangGraph**.
 
-When a user submits a market query, RizqAI routes the request through a specialized hierarchy of autonomous agents:
+When a user submits a market or financial query, RizqAI routes the request through a specialized hierarchy of autonomous agents:
 
 ```
                                   ┌────────────────────────┐
