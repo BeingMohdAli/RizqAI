@@ -122,6 +122,12 @@ The system is engineered as an asynchronous decoupled architecture:
 <a id="-demo"></a>
 ## 🎬 Demo
 
+
+
+https://github.com/user-attachments/assets/b9c1b783-583d-4ab1-b063-f3977b197804
+
+
+
 ### Multi-Agent State Machine Topology
 
 RizqAI's compiled execution graph maps state transitions dynamically across conditional decision boundaries:

@@ -3,9 +3,9 @@
 import { useRef } from "react";
 
 const EXAMPLES = [
-  "Should I buy NVDA?",
-  "Compare AAPL and MSFT",
-  "What's the risk on TSLA right now?",
+  "Should I buy NVIDIA stocks ?",
+  "Compare AAPL and MSFT stocks",
+  "What's the risk on TSLA stocks right now?",
 ];
 
 export default function QueryInput({
