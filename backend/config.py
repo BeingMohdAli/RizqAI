@@ -6,10 +6,14 @@ from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openrouter import ChatOpenRouter
-
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+from settings import (
+    AUTH_REDIRECT_URL,
+    DATABASE_URL,
+    PASSWORD_RESET_REDIRECT_URL,
+    SUPABASE_ANON_KEY,
+    SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_URL,
+)
 
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
