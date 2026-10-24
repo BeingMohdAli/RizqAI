@@ -47,6 +47,6 @@ for agent in [
 ]:
     graph_builder.add_conditional_edges(
         agent,
-        route_next_agent,
+        route_next_agent,    
         routing_map,
     )
