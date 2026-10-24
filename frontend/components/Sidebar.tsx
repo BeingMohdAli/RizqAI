@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import type { ConversationListItem } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 
 const STATUS_COPY: Record<"checking" | "open" | "closed", { label: string; dot: string }> = {
   checking: { label: "Connecting…", dot: "bg-text-faint" },
-  open: { label: "Desk open", dot: "bg-bull animate-pulse-dot" },
+  open: { label: "Desk open", dot: "bg-emerald-400 animate-pulse-dot" },
   closed: { label: "Desk unreachable", dot: "bg-bear" },
 };
 
@@ -31,26 +32,31 @@ export default function Sidebar({
   const body = (
     <div className="flex h-full flex-col">
       <div className="border-b border-line-soft px-4 py-4">
-        <div className="flex items-baseline gap-2">
-          <span className="font-display text-lg font-semibold tracking-tight text-text">
-            Rizq<span className="text-gold">AI</span>
+        <Link href="/" className="flex items-baseline gap-2 group" title="Return to Landing Page">
+          <span className="font-display text-lg font-semibold tracking-tight text-text group-hover:text-emerald-400 transition-colors">
+            Rizq<span className="text-emerald-400">AI</span>
           </span>
           <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-text-faint">
             the desk
           </span>
-        </div>
-        <div className="mt-2 flex items-center gap-1.5">
-          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusInfo.dot}`} />
-          <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-faint">
-            {statusInfo.label}
-          </span>
+        </Link>
+        <div className="mt-2 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusInfo.dot}`} />
+            <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-faint">
+              {statusInfo.label}
+            </span>
+          </div>
+          <Link href="/" className="text-[11px] font-mono text-emerald-400/80 hover:text-emerald-300 transition-colors">
+            ← Home
+          </Link>
         </div>
       </div>
 
       <div className="px-4 pt-4">
         <button
           onClick={onNewAnalysis}
-          className="w-full rounded-xl border border-gold/30 bg-gold-soft px-3 py-2.5 text-left font-mono text-sm font-medium text-gold transition-colors hover:border-gold/50"
+          className="w-full rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-left font-mono text-sm font-medium text-emerald-400 transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/15"
         >
           + New analysis
         </button>

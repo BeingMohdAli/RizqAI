@@ -6,12 +6,11 @@ import type {
 
 export type { StreamEvent } from "./types";
 
-// Backend mounts everything under /conversations (api/routes.py:
-// `APIRouter(prefix="/conversations")`) — there is no separate /api prefix.
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
 
 const CONVERSATIONS_URL = `${API_BASE_URL}/conversations`;
+const AUTH_URL = `${API_BASE_URL}/auth`;
 
 export class ApiError extends Error {
   status: number;
@@ -21,13 +20,88 @@ export class ApiError extends Error {
   }
 }
 
+export function getStoredToken(): string | null {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("rizqai_token");
+  }
+  return null;
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = getStoredToken();
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
+
 async function asJson<T>(res: Response, fallbackMessage: string): Promise<T> {
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
-    throw new ApiError(res.status, detail || fallbackMessage);
+    try {
+      const parsed = JSON.parse(detail);
+      throw new ApiError(res.status, parsed.detail || fallbackMessage);
+    } catch {
+      throw new ApiError(res.status, detail || fallbackMessage);
+    }
   }
   return res.json() as Promise<T>;
 }
+
+// ---------------------------------------------------------------------------
+// Auth Endpoints
+// ---------------------------------------------------------------------------
+
+export interface SessionResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in?: number;
+  expires_at?: number;
+  user_id: string;
+  email?: string;
+}
+
+export async function loginUser(email: string, password: string): Promise<SessionResponse> {
+  const res = await fetch(`${AUTH_URL}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  return asJson<SessionResponse>(res, "Invalid email or password.");
+}
+
+export async function signupUser(
+  email: string,
+  password: string
+): Promise<SessionResponse | { message: string }> {
+  const res = await fetch(`${AUTH_URL}/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  return asJson<SessionResponse | { message: string }>(res, "Signup failed.");
+}
+
+export async function logoutUser(): Promise<{ message: string }> {
+  const res = await fetch(`${AUTH_URL}/logout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+  });
+  return asJson<{ message: string }>(res, "Failed to sign out.");
+}
+
+export async function getOAuthUrl(provider: "google" | "github"): Promise<{ url: string }> {
+  const res = await fetch(`${AUTH_URL}/oauth/${provider}`);
+  return asJson<{ url: string }>(res, `Failed to initialize ${provider} login.`);
+}
+
+// ---------------------------------------------------------------------------
+// Conversation & Stream Endpoints
+// ---------------------------------------------------------------------------
 
 /** GET /conversations/health */
 export async function checkHealth(): Promise<boolean> {
@@ -41,9 +115,14 @@ export async function checkHealth(): Promise<boolean> {
   }
 }
 
-/** GET /conversations — most-recently-updated first (backend already sorts this way). */
+/** GET /conversations — most-recently-updated first */
 export async function listConversations(): Promise<ConversationListItem[]> {
-  const res = await fetch(CONVERSATIONS_URL, { cache: "no-store" });
+  const res = await fetch(CONVERSATIONS_URL, {
+    cache: "no-store",
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
   return asJson(res, "Failed to load conversations.");
 }
 
@@ -51,22 +130,13 @@ export async function listConversations(): Promise<ConversationListItem[]> {
 export async function getMessages(conversationId: string): Promise<MessageResponse[]> {
   const res = await fetch(`${CONVERSATIONS_URL}/${conversationId}/messages`, {
     cache: "no-store",
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
   return asJson(res, "Failed to load conversation messages.");
 }
 
-/**
- * The backend creates a fresh conversation id server-side on the first
- * message of a thread, but /messages/stream never sends that id back over
- * SSE (schemas/conversation.py::ChatRequest / api/routes.py don't surface
- * it). There is no way to recover it from that response alone.
- *
- * Workaround: immediately after a "done" event for a turn that started with
- * conversation_id = null, re-fetch the list and take the top entry — the
- * backend bumps `updated_at` on the conversation right before sending
- * "done", and the list is already ordered by updated_at desc. This assumes
- * single-user local usage (no concurrent writers), which matches this app.
- */
 export async function resolveLatestConversationId(): Promise<string | null> {
   const conversations = await listConversations();
   return conversations[0]?.id ?? null;
@@ -74,8 +144,7 @@ export async function resolveLatestConversationId(): Promise<string | null> {
 
 /**
  * Streams one turn from POST /conversations/messages/stream, invoking
- * `onEvent` for every Server-Sent Event as it arrives. Resolves once the
- * stream closes (after a "done" event) or rejects on a network failure.
+ * `onEvent` for every Server-Sent Event as it arrives.
  */
 export async function streamMessage(
   query: string,
@@ -85,17 +154,24 @@ export async function streamMessage(
 ): Promise<void> {
   const res = await fetch(`${CONVERSATIONS_URL}/messages/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify({ query, conversation_id: conversationId }),
     signal,
   });
 
   if (!res.ok || !res.body) {
     const detail = await res.text().catch(() => "");
-    throw new ApiError(
-      res.status,
-      detail || `Request failed (${res.status}): ${res.statusText}`
-    );
+    let errorMessage = detail || `Request failed (${res.status}): ${res.statusText}`;
+    try {
+      const parsed = JSON.parse(detail);
+      if (parsed.detail) errorMessage = parsed.detail;
+    } catch {
+      // Keep detail
+    }
+    throw new ApiError(res.status, errorMessage);
   }
 
   const reader = res.body.getReader();
