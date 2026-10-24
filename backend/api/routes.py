@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from database.db import get_db
 from database.models import Conversation, Message
 from schemas.conversation import ChatRequest, ConversationListItem, MessageResponse
+from auth import AuthUser, require_user
 from .helpers import serialize_node_output, generate_conversation_title, get_message_content
 
 
@@ -26,12 +27,16 @@ async def health():
 
 
 @router.get("", response_model=list[ConversationListItem],)
-def get_conversations(db: Session = Depends(get_db),):
+def get_conversations(
+    user: AuthUser = Depends(require_user),
+    db: Session = Depends(get_db),
+):
     """Return all conversations ordered by most recently updated."""
 
     try:
         conversations = (
             db.query(Conversation)
+            .filter(Conversation.user_id == user.id)
             .order_by(Conversation.updated_at.desc())
             .all()
         )
@@ -48,13 +53,20 @@ def get_conversations(db: Session = Depends(get_db),):
 
 
 @router.get("/{conversation_id}/messages", response_model=list[MessageResponse],)
-def get_messages(conversation_id: str, db: Session = Depends(get_db)):
+def get_messages(
+    conversation_id: str,
+    user: AuthUser = Depends(require_user),
+    db: Session = Depends(get_db),
+):
     """Return all messages belonging to a conversation"""
 
     try:
         conversation = (
             db.query(Conversation)
-            .filter(Conversation.id == conversation_id)
+            .filter(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user.id,
+            )
             .first()
         )
 
@@ -83,7 +95,12 @@ def get_messages(conversation_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/messages/stream")
-async def analyze_stream(chat_request: ChatRequest, request: Request,  db: Session = Depends(get_db)) -> StreamingResponse:
+async def analyze_stream(
+    chat_request: ChatRequest,
+    request: Request,
+    user: AuthUser = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
     """To handle the new query and  showing output by streaming"""
     query = chat_request.query.strip()
 
@@ -102,6 +119,7 @@ async def analyze_stream(chat_request: ChatRequest, request: Request,  db: Sessi
             conversation_id = str(uuid4())
             conversation = Conversation(
                 id=conversation_id,
+                user_id=user.id,
                 title=generate_conversation_title(query),
             )
 
@@ -111,7 +129,10 @@ async def analyze_stream(chat_request: ChatRequest, request: Request,  db: Sessi
         else:
             conversation = (
                 db.query(Conversation)
-                .filter(Conversation.id == conversation_id)
+                .filter(
+                    Conversation.id == conversation_id,
+                    Conversation.user_id == user.id,
+                )
                 .first()
             )
 
