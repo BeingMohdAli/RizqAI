@@ -3,9 +3,7 @@ from graph.state import GraphState
 from prompts.general_finance_prompt import GENERAL_FINANCE_PROMPT
 from schemas.general_finance_state import GeneralFinanceAnswer
 
-
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import AIMessage
 from langsmith import traceable
 
 
@@ -19,9 +17,9 @@ async def general_finance_agent(state: GraphState) -> GraphState:
         structured_llm  = general_finance_llm.with_structured_output(GeneralFinanceAnswer)
         prompt = ChatPromptTemplate.from_messages([
             ("system", GENERAL_FINANCE_PROMPT),
-            ("human", "Current user query: {user_query}"),
+            ("human", "{user_query}"),
         ])
-        messages = await prompt.ainvoke({"user_query": state.user_query, "messages": state.messages})
+        messages = await prompt.ainvoke({"user_query": state.user_query})
         answer = await structured_llm.ainvoke(messages)
 
     except Exception as e:
@@ -33,7 +31,5 @@ async def general_finance_agent(state: GraphState) -> GraphState:
     return {
         "success": True,
         "general_finance": answer,
-        "messages": [
-            AIMessage(content=f"General Finance Agent Output: \n{answer}")
-        ],
+        "completed_tasks": ["general_finance_agent"]
     }
