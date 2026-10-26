@@ -270,7 +270,7 @@ cd frontend
 npm install
 
 # Launch the Next.js development server
-npm run dev
+npm start
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
