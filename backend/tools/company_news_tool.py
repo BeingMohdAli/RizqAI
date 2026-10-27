@@ -13,7 +13,7 @@ def _get_client() -> NewsApiClient:
     if _client is None:
         if not NEWS_API_KEY:
             raise RuntimeError(
-                "NEWS_API_KEY is not set. Add it to backend/.env "
+                "NEWS_API_KEY is not set. Add it to the repository root .env "
                 "(see backend/.env.example) — get a free key at https://newsapi.org"
             )
         _client = NewsApiClient(api_key=NEWS_API_KEY)

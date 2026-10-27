@@ -227,7 +227,7 @@ docker compose up --build
 The services will initialize at:
 - **Frontend**: `http://localhost:3000`
 - **Backend API**: `http://localhost:8000`
-- **Backend Healthcheck**: `http://localhost:8000/conversations/health`
+- **Backend Healthcheck**: `http://localhost:8000/analysis/health`
 
 ---
 
@@ -236,7 +236,7 @@ The services will initialize at:
 #### 1. Backend Service Setup
 
 ```bash
-# Navigate to the backend directory
+# From the repository root
 cd backend
 
 # Create and activate a Python virtual environment
@@ -256,7 +256,14 @@ pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-The backend automatically creates the SQLite databases (`rizqai.db` and `rizqai_checkpoints.db`) upon startup.
+The backend uses the `DATABASE_URL` from the root `.env` for local authentication
+sessions. Apply the database migration before the first run:
+
+```bash
+alembic -c alembic.ini upgrade head
+```
+
+The LangGraph checkpoint database remains local at `rizqai_checkpoints.db`.
 
 #### 2. Frontend Service Setup
 
@@ -292,21 +299,20 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### REST & Streaming API Endpoints
 
-The backend exposes endpoints under the `/conversations` prefix:
+The backend exposes analysis endpoints under the `/analysis` prefix:
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/conversations/health` | Healthcheck verification endpoint returning `{"status": "ok"}`. |
-| `GET` | `/conversations` | Fetches all persisted conversations sorted by `updated_at DESC`. |
-| `GET` | `/conversations/{id}/messages` | Fetches complete message history and serialized states for thread `{id}`. |
-| `POST` | `/conversations/messages/stream` | Dispatches query to LangGraph and streams execution updates via SSE. |
+| `GET` | `/analysis/health` | Healthcheck verification endpoint returning `{"status": "ok"}`. |
+| `POST` | `/analysis/stream` | Requires a bearer token; dispatches a query to LangGraph and streams execution updates via SSE. |
 
 #### Streaming Query with cURL
 
 ```bash
-curl -N -X POST http://localhost:8000/conversations/messages/stream \
+curl -N -X POST http://localhost:8000/analysis/stream \
   -H "Content-Type: application/json" \
-  -d '{"query": "Evaluate Microsoft MSFT cloud growth and risk profile", "conversation_id": null}'
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -d '{"query": "Evaluate Microsoft MSFT cloud growth and risk profile"}'
 ```
 
 ### Example Prompts
@@ -479,7 +485,7 @@ RizqAI/
 │   │
 │   ├── database/                # Persistence & ORM models
 │   │   ├── db.py                # SQLAlchemy engine & session factory
-│   │   └── models.py            # Conversation & Message relational entities
+│   │   └── models.py            # Local authentication entities
 │   │
 │   └── api/                     # Web layer & routing
 │       ├── routes.py            # REST endpoints & SSE streaming handler
@@ -516,7 +522,6 @@ RizqAI/
         ├── api.ts               # ReadableStream SSE reader & REST fetchers
         ├── types.ts             # TypeScript mirrors of backend Pydantic models
         ├── format.ts            # Currency & compact number formatters
-        ├── parseHistory.ts      # Relational message rehydration parser
         └── streamLog.ts         # Event stream log summarization
 ```
 

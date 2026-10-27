@@ -9,7 +9,7 @@ interface WorkspaceSidebarProps {
   activeConversationId: string | null;
   onSelect: (id: string) => void;
   onNewAnalysis: () => void;
-  onQuickQuery: (query: string) => void;
+  onDelete?: (id: string) => void;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
 }
@@ -19,19 +19,10 @@ export default function WorkspaceSidebar({
   activeConversationId,
   onSelect,
   onNewAnalysis,
-  onQuickQuery,
+  onDelete,
   isOpenMobile,
   onCloseMobile,
 }: WorkspaceSidebarProps) {
-  // Preset default mock chats if the user has no previous history
-  const defaultRecentChats = [
-    { title: "Apple stock analysis", time: "2h ago", icon: "", query: "Analyze Apple (AAPL) stock" },
-    { title: "Best AI stocks to watch", time: "4h ago", icon: "📈", query: "What are the best AI stocks to watch right now?" },
-    { title: "Tesla investment outlook", time: "6h ago", icon: "⚡", query: "Analyze Tesla (TSLA) investment outlook" },
-    { title: "How is the Indian economy...", time: "1d ago", icon: "📄", query: "How is the Indian economy performing currently?" },
-    { title: "Compare Reliance vs TCS", time: "1d ago", icon: "📊", query: "Compare Reliance vs TCS fundamentals" },
-  ];
-
   const sidebarContent = (
     <div className="flex h-full flex-col justify-between p-4 bg-[#070c14] border-r border-[#152030] text-text select-none">
       <div className="space-y-5 overflow-y-auto pr-1">
@@ -104,41 +95,46 @@ export default function WorkspaceSidebar({
               conversations.map((c) => {
                 const active = c.id === activeConversationId;
                 return (
-                  <button
+                  <div
                     key={c.id}
-                    onClick={() => onSelect(c.id)}
-                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors text-xs ${
+                    className={`group flex items-center justify-between rounded-lg px-3 py-2 transition-colors text-xs ${
                       active
                         ? "bg-[#111c2e] text-emerald-400 font-medium border border-emerald-500/20"
                         : "text-text-muted hover:bg-[#0e1726] hover:text-white"
                     }`}
                   >
-                    <span className="text-text-faint">💬</span>
-                    <div className="min-w-0 flex-1 truncate">
-                      <div className="truncate leading-tight">{c.title}</div>
-                      <div className="text-[10px] text-text-faint font-mono">{timeAgo(c.updated_at)}</div>
-                    </div>
-                  </button>
+                    <button
+                      onClick={() => onSelect(c.id)}
+                      className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                    >
+                      <span className="text-text-faint">💬</span>
+                      <div className="min-w-0 flex-1 truncate">
+                        <div className="truncate leading-tight">{c.title}</div>
+                        <div className="text-[10px] text-text-faint font-mono">{timeAgo(c.updated_at)}</div>
+                      </div>
+                    </button>
+                    {onDelete && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(c.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-text-faint hover:text-rose-400 transition-opacity ml-1"
+                        title="Delete chat"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 );
               })
             ) : (
-              defaultRecentChats.map((item) => (
-                <button
-                  key={item.title}
-                  onClick={() => onQuickQuery(item.query)}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors text-xs text-text-muted hover:bg-[#0e1726] hover:text-white group"
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#101929] text-[11px] group-hover:scale-110 transition-transform">
-                    {item.icon}
-                  </span>
-                  <div className="min-w-0 flex-1 truncate">
-                    <div className="truncate leading-tight text-text-muted group-hover:text-white">
-                      {item.title}
-                    </div>
-                    <div className="text-[10px] text-text-faint font-mono">{item.time}</div>
-                  </div>
-                </button>
-              ))
+              <p className="px-3 py-2 text-[11px] text-text-faint">
+                No chats yet. Start a new one above.
+              </p>
             )}
           </div>
         </div>
@@ -192,4 +188,3 @@ export default function WorkspaceSidebar({
     </>
   );
 }
-

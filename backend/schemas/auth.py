@@ -9,6 +9,16 @@ class EmailPasswordRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class SignupOtpRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+
+class VerifySignupOtpRequest(SignupOtpRequest):
+    otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+    name: str = Field(min_length=1, max_length=120)
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str = Field(min_length=1)
 
@@ -32,6 +42,13 @@ class SessionResponse(BaseModel):
     expires_in: int | None = None
     expires_at: int | None = None
     user_id: str
+    email: EmailStr | None = None
+    name: str | None = None
+
+
+class CurrentUserResponse(BaseModel):
+    user_id: str
+    name: str
     email: EmailStr | None = None
 
 

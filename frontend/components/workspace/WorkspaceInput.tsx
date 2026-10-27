@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 
 interface WorkspaceInputProps {
   value: string;
@@ -15,8 +15,6 @@ export default function WorkspaceInput({
   onSubmit,
   disabled,
 }: WorkspaceInputProps) {
-  const [modelMode, setModelMode] = useState("Auto (Best)");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -31,8 +29,6 @@ export default function WorkspaceInput({
       }
     }
   };
-
-  const models = ["Auto (Best)", "Deep Research", "Fast Screen", "Risk Heavy"];
 
   return (
     <div className="relative w-full">
@@ -60,42 +56,6 @@ export default function WorkspaceInput({
           className="flex-1 bg-transparent text-sm text-text placeholder-text-faint focus:outline-none disabled:opacity-50"
         />
 
-        {/* Right Model Selector Pill */}
-        <div className="relative hidden sm:block">
-          <button
-            type="button"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-1.5 rounded-xl border border-[#1a283e] bg-[#09101b] px-2.5 py-1.5 text-xs font-mono font-medium text-emerald-400 hover:border-emerald-500/30 transition-colors"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            <span>{modelMode}</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-
-          {isDropdownOpen && (
-            <div className="absolute right-0 bottom-full mb-2 w-36 rounded-xl border border-[#1a283e] bg-[#0c1421] p-1 shadow-xl z-20 text-xs font-mono">
-              {models.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => {
-                    setModelMode(m);
-                    setIsDropdownOpen(false);
-                  }}
-                  className={`flex w-full items-center px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    modelMode === m
-                      ? "bg-emerald-500/15 text-emerald-400 font-semibold"
-                      : "text-text-muted hover:bg-[#142032] hover:text-white"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Submit Button */}
         <button
           type="button"
@@ -116,4 +76,3 @@ export default function WorkspaceInput({
     </div>
   );
 }
-

@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/authContext";
 import {
   checkHealth,
+  deleteConversation,
   getMessages,
   listConversations,
   resolveLatestConversationId,
@@ -23,88 +26,6 @@ const AGENT_TASK_VALUES: AgentTask[] = [
   "debate_agent",
   "thesis_agent",
 ];
-
-// Initial mock turn matching the screenshot so the user sees the exact design out of the box!
-const INITIAL_DEMO_TURN: AnalysisTurn = {
-  id: "demo-tesla-turn",
-  query: "Analyze Tesla (TSLA) and give me a detailed investment recommendation with key risks and opportunities.",
-  status: "done",
-  error: null,
-  guardrail: {
-    category: "company_analysis",
-    reason: "Query requests comprehensive equity investment analysis for Tesla.",
-  },
-  plan: {
-    companies: ["Tesla"],
-    tasks: ["research_agent", "risk_agent", "debate_agent", "thesis_agent"],
-  },
-  research: {
-    summary: "Tesla is leading the global transition to sustainable energy and transport.",
-    tool_data: [
-      {
-        tool: "get_stock_price",
-        tool_input: { symbol: "TSLA" },
-        output: { price: 248.5, market_cap: 795400000000, year_high: 488.5, year_low: 138.8 },
-      },
-      {
-        tool: "get_company_info",
-        tool_input: { symbol: "TSLA" },
-        output: { pe_ratio: 65.3, dividend_yield: 0.0, beta: 2.32 },
-      },
-    ],
-  },
-  risks: {
-    risk_score: 6,
-    risk_level: "MEDIUM",
-    summary: "Elevated valuation and macro rate volatility.",
-    mitigating_factors: ["Strong balance sheet", "Software margins"],
-    risks: [
-      "High valuation and P/E ratio relative to automotive peers",
-      "Increasing competition (BYD, legacy OEMs)",
-      "Regulatory and policy risks in international markets",
-      "Execution risks in AI and FSD commercialization",
-    ],
-  },
-  debate: {
-    bull_case: {
-      summary: "Growth in energy and AI robotics.",
-      arguments: [
-        "Growing EV market share and global expansion",
-        "Energy business (Megapack, Solar)",
-        "AI and autonomous driving potential",
-        "Strong brand and innovation pipeline",
-      ],
-    },
-    bear_case: {
-      summary: "Margin compression and EV saturation.",
-      arguments: ["High valuation", "China margin competition"],
-    },
-    key_conflicts: ["Valuation vs growth"],
-  },
-  thesis: {
-    recommendation: "HOLD",
-    confidence: 7,
-    investment_thesis:
-      "Tesla remains a strong long-term growth story, driven by its leadership in EVs, energy storage, and AI. However, the stock is currently overvalued with high volatility, making it a HOLD for most investors. Wait for a better entry point or clearer catalysts for the next leg up.",
-    key_reasons: [
-      "Growing EV market share and global expansion",
-      "Energy business (Megapack, Solar)",
-      "AI and autonomous driving potential",
-      "Strong brand and innovation pipeline",
-    ],
-    potential_risks: [
-      "High valuation and P/E ratio",
-      "Increasing competition (BYD, legacy OEMs)",
-      "Regulatory and policy risks",
-      "Execution risks in AI and FSD",
-    ],
-    next_steps: ["Monitor Q1 margins", "Track FSD v13 release"],
-    disclaimer: "Informational only.",
-  },
-  generalFinance: null,
-  completedTasks: ["research_agent", "risk_agent", "debate_agent", "thesis_agent"],
-  events: [],
-};
 
 function newTurn(query: string): AnalysisTurn {
   return {
@@ -157,7 +78,7 @@ function applyEvent(turn: AnalysisTurn, event: StreamEvent): AnalysisTurn {
 
   if (data.success === false) {
     next.status = "error";
-    next.error = data.error ?? "The desk hit a snag.";
+    next.error = data.error ?? "The desk encountered an error.";
     return next;
   }
 
@@ -172,9 +93,11 @@ function applyEvent(turn: AnalysisTurn, event: StreamEvent): AnalysisTurn {
 }
 
 export default function WorkspacePage() {
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [turns, setTurns] = useState<AnalysisTurn[]>([INITIAL_DEMO_TURN]);
+  const [turns, setTurns] = useState<AnalysisTurn[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -187,16 +110,22 @@ export default function WorkspacePage() {
       const list = await listConversations();
       setConversations(list);
     } catch {
-      // Ignore in dev
+      // Ignore unauthorized or network errors during refresh
     }
   }, []);
 
   useEffect(() => {
-    (async () => {
-      await checkHealth();
-      await refreshConversations();
-    })();
-  }, [refreshConversations]);
+    if (!authLoading && !user) {
+      router.replace("/");
+    }
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (user) {
+      checkHealth().catch(() => {});
+      refreshConversations();
+    }
+  }, [user, refreshConversations]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -217,12 +146,24 @@ export default function WorkspacePage() {
 
     try {
       const messages = await getMessages(id);
-      const parsed = reconstructTurns(messages);
-      setTurns(parsed.length > 0 ? parsed : [INITIAL_DEMO_TURN]);
+      setTurns(reconstructTurns(messages));
     } catch {
-      setTurns([INITIAL_DEMO_TURN]);
+      setTurns([]);
     } finally {
       setHistoryLoading(false);
+    }
+  }
+
+  async function handleDeleteConversation(id: string) {
+    try {
+      await deleteConversation(id);
+      if (activeConversationId === id) {
+        setActiveConversationId(null);
+        setTurns([]);
+      }
+      await refreshConversations();
+    } catch {
+      // Non-fatal
     }
   }
 
@@ -232,7 +173,6 @@ export default function WorkspacePage() {
 
     const turn = newTurn(query);
     const startingConversationId = activeConversationId;
-
     setTurns((prev) => [...prev, turn]);
     setInput("");
     setIsStreaming(true);
@@ -241,7 +181,6 @@ export default function WorkspacePage() {
       await streamMessage(query, startingConversationId, (event) => {
         setTurns((prev) => prev.map((t) => (t.id === turn.id ? applyEvent(t, event) : t)));
       });
-
       if (!startingConversationId) {
         try {
           const resolvedId = await resolveLatestConversationId();
@@ -250,7 +189,6 @@ export default function WorkspacePage() {
           // Non-fatal
         }
       }
-
       await refreshConversations();
     } catch (err) {
       setTurns((prev) =>
@@ -274,22 +212,50 @@ export default function WorkspacePage() {
     executeQuery(prompt);
   };
 
-  const activeTurn = turns.length > 0 ? turns[turns.length - 1] : INITIAL_DEMO_TURN;
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#070c14] text-text-muted">
+        <div className="flex items-center gap-3">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+          <span className="text-sm">Restoring workspace session…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#070c14] text-text-muted">
+        <div className="text-center space-y-3">
+          <p className="text-sm">Sign in required to access the analyst workspace.</p>
+          <button
+            onClick={() => router.push("/")}
+            className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-ink hover:bg-emerald-400 transition-colors"
+          >
+            Go to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const activeTurn = turns.length > 0 ? turns[turns.length - 1] : null;
+  const userInitial = (user.name || "A").slice(0, 1).toUpperCase();
+  const userName = user.name || "Analyst";
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#070c14] text-foreground">
-      {/* 1. Left Sidebar */}
       <WorkspaceSidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
         onSelect={handleSelectConversation}
         onNewAnalysis={handleNewAnalysis}
-        onQuickQuery={handleQuickPrompt}
+        onDelete={handleDeleteConversation}
         isOpenMobile={sidebarOpenMobile}
         onCloseMobile={() => setSidebarOpenMobile(false)}
       />
 
-      {/* 2. Center Chat Terminal */}
+      {/* Center Chat Terminal */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#080d16] border-x border-[#152030]">
         {/* Mobile Header Bar */}
         <header className="flex lg:hidden items-center justify-between border-b border-[#152030] bg-[#070c14] px-4 py-3">
@@ -304,7 +270,6 @@ export default function WorkspacePage() {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-
           <span className="font-display font-bold text-white text-sm">
             Rizq<span className="text-emerald-400">AI</span>
           </span>
@@ -323,9 +288,8 @@ export default function WorkspacePage() {
 
         {/* Scrollable Chat Area */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-          {/* Welcome Greeting Banner (Mohd Ali) */}
+          {/* Welcome Greeting Banner */}
           <div className="relative overflow-hidden rounded-2xl border border-[#162234] bg-gradient-to-b from-[#0e1828]/80 to-[#080f1b]/90 p-6 text-center shadow-lg">
-            {/* Subtle background graph wave decoration */}
             <div className="pointer-events-none absolute inset-0 opacity-15">
               <svg width="100%" height="100%" viewBox="0 0 800 200" preserveAspectRatio="none">
                 <path
@@ -343,37 +307,37 @@ export default function WorkspacePage() {
 
             <div className="relative z-10 space-y-2">
               <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center justify-center gap-2">
-                Good evening, Mohd Ali <span className="text-2xl">👋</span>
+                Welcome back, {userName} <span className="text-2xl">👋</span>
               </h2>
               <p className="text-xs sm:text-sm text-text-muted max-w-md mx-auto">
-                Ask me anything about stocks, markets, or financial concepts.
+                Ask about any stock, financial statement, or macro trend for deep multi-agent research.
               </p>
 
-              {/* 4 Quick Suggestion Chips */}
+              {/* Quick Prompt Chips */}
               <div className="pt-4 flex flex-wrap items-center justify-center gap-2">
                 <button
-                  onClick={() => handleQuickPrompt("Analyze Apple (AAPL)")}
+                  onClick={() => handleQuickPrompt("Analyze Apple (AAPL) stock")}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-[#1a283e] bg-[#0d1624] px-3.5 py-2 text-xs font-medium text-text hover:border-emerald-500/40 hover:text-emerald-300 hover:bg-[#121e32] transition-colors"
                 >
                   <span></span> Analyze Apple (AAPL)
                 </button>
                 <button
-                  onClick={() => handleQuickPrompt("What are the latest market news and catalysts?")}
+                  onClick={() => handleQuickPrompt("Analyze Microsoft (MSFT) valuation and risks")}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-[#1a283e] bg-[#0d1624] px-3.5 py-2 text-xs font-medium text-text hover:border-emerald-500/40 hover:text-emerald-300 hover:bg-[#121e32] transition-colors"
                 >
-                  <span>📰</span> Latest market news
+                  <span>📊</span> Analyze Microsoft (MSFT)
                 </button>
                 <button
-                  onClick={() => handleQuickPrompt("What are the best long term growth stocks to watch?")}
+                  onClick={() => handleQuickPrompt("Compare NVIDIA (NVDA) growth potential vs risks")}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-[#1a283e] bg-[#0d1624] px-3.5 py-2 text-xs font-medium text-text hover:border-emerald-500/40 hover:text-emerald-300 hover:bg-[#121e32] transition-colors"
                 >
-                  <span>📈</span> Best long term stocks
+                  <span>⚡</span> NVIDIA (NVDA) Growth
                 </button>
                 <button
-                  onClick={() => handleQuickPrompt("Explain options trading strategies for hedging")}
+                  onClick={() => handleQuickPrompt("Explain options trading strategies for portfolio hedging")}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-[#1a283e] bg-[#0d1624] px-3.5 py-2 text-xs font-medium text-text hover:border-emerald-500/40 hover:text-emerald-300 hover:bg-[#121e32] transition-colors"
                 >
-                  <span>💡</span> Explain options trading
+                  <span>💡</span> Explain Options Hedging
                 </button>
               </div>
             </div>
@@ -383,29 +347,24 @@ export default function WorkspacePage() {
           {historyLoading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-xs text-text-faint">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse-dot" />
-              Loading research files…
+              Loading research thread…
             </div>
-          ) : (
-            turns.map((turn) => (
-              <div key={turn.id} className="space-y-4">
-                {/* 1. User Message (Right Aligned Dark Card with Avatar) */}
+          ) : turns.map((turn, index) => (
+              <div key={turn.id || index} className="space-y-4">
+                {/* User Message */}
                 <div className="flex justify-end items-end gap-2.5">
                   <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-sm border border-[#1e304b] bg-[#101b2c] p-4 text-xs sm:text-sm text-white shadow-md">
                     <p className="leading-relaxed">{turn.query}</p>
-                    <div className="text-right text-[10px] font-mono text-text-faint mt-1.5">
-                      7:24 PM
-                    </div>
                   </div>
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-sm">
-                    M
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-emerald-600 to-teal-600 text-xs font-bold text-white shadow-sm">
+                    {userInitial}
                   </div>
                 </div>
 
-                {/* 2. Multi-Agent Assistant Card (Matching the Screenshot) */}
+                {/* Multi-Agent Assistant Output */}
                 <WorkspaceCard turn={turn} />
               </div>
-            ))
-          )}
+          ))}
 
           <div ref={bottomRef} />
         </div>
@@ -421,10 +380,9 @@ export default function WorkspacePage() {
         </div>
       </div>
 
-      {/* 3. Right Panel (Context & Live Market Data) */}
+      {/* 3. Right Panel (News, Financials, Analysis) */}
       <WorkspaceRightPanel
         activeTurn={activeTurn}
-        onQuickQuery={handleQuickPrompt}
         isOpenMobile={rightPanelOpenMobile}
         onCloseMobile={() => setRightPanelOpenMobile(false)}
       />

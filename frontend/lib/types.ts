@@ -101,14 +101,15 @@ export interface GeneralFinanceAnswer {
 export interface ConversationListItem {
   id: string;
   title: string;
-  updated_at: string; // ISO datetime
+  updated_at: string;
 }
 
 export interface MessageResponse {
   id: string;
   role: "user" | "assistant";
-  content: string; // plain text for role=user, JSON string for role=assistant
-  created_at: string; // ISO datetime
+  agent_name?: string | null;
+  content: string;
+  created_at: string;
 }
 
 // --- SSE stream (api/helpers.py::serialize_node_output) -------------------
@@ -153,18 +154,11 @@ export interface AnalysisTurn {
   thesis: ThesisAgentState | null;
   generalFinance: GeneralFinanceAnswer | null;
   completedTasks: AgentTask[];
-  /**
-   * True when this turn was rebuilt from persisted messages rather than a
-   * live stream. GET /messages doesn't return agent_name or the planner's
-   * output, so `plan` here (if present) is inferred from which sections
-   * exist, `plan.companies` is always empty, and `guardrail` is always null.
-   */
   fromHistory?: boolean;
   /**
    * Raw log of every SSE event this turn received, in arrival order. Client-
    * only — never persisted, so reloaded history turns always start with an
-   * empty log. Purely for visibility into what the graph is actually doing
-   * turn by turn, separate from the polished section rendering.
+   * empty log.
    */
   events: StreamLogEntry[];
 }

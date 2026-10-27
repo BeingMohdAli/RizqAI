@@ -15,7 +15,7 @@ from api.auth_routes import router as auth_router
 from graph.graph import graph_builder
 
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 @asynccontextmanager

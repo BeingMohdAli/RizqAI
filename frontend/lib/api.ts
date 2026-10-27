@@ -1,8 +1,4 @@
-import type {
-  ConversationListItem,
-  MessageResponse,
-  StreamEvent,
-} from "./types";
+import type { ConversationListItem, MessageResponse, StreamEvent } from "./types";
 
 export type { StreamEvent } from "./types";
 
@@ -27,6 +23,23 @@ export function getStoredToken(): string | null {
   return null;
 }
 
+export function getStoredRefreshToken(): string | null {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("rizqai_refresh_token");
+  }
+  return null;
+}
+
+export function clearStoredTokens(): void {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("rizqai_token");
+    localStorage.removeItem("rizqai_refresh_token");
+    localStorage.removeItem("rizqai_user_id");
+    localStorage.removeItem("rizqai_user_email");
+    localStorage.removeItem("rizqai_user_name");
+  }
+}
+
 export function getAuthHeaders(): Record<string, string> {
   const token = getStoredToken();
   if (token) {
@@ -38,12 +51,14 @@ export function getAuthHeaders(): Record<string, string> {
 async function asJson<T>(res: Response, fallbackMessage: string): Promise<T> {
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
+    let message = detail || fallbackMessage;
     try {
       const parsed = JSON.parse(detail);
-      throw new ApiError(res.status, parsed.detail || fallbackMessage);
+      message = parsed.detail || message;
     } catch {
-      throw new ApiError(res.status, detail || fallbackMessage);
+      // The response may be plain text.
     }
+    throw new ApiError(res.status, message);
   }
   return res.json() as Promise<T>;
 }
@@ -59,6 +74,13 @@ export interface SessionResponse {
   expires_in?: number;
   expires_at?: number;
   user_id: string;
+  email?: string;
+  name?: string;
+}
+
+export interface CurrentUserResponse {
+  user_id: string;
+  name: string;
   email?: string;
 }
 
@@ -83,6 +105,41 @@ export async function signupUser(
   return asJson<SessionResponse | { message: string }>(res, "Signup failed.");
 }
 
+export async function requestSignupOtp(
+  email: string,
+  password: string
+): Promise<{ message: string }> {
+  const res = await fetch(`${AUTH_URL}/signup/request-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  return asJson<{ message: string }>(res, "Unable to generate signup OTP.");
+}
+
+export async function verifySignupOtp(
+  email: string,
+  password: string,
+  otp: string,
+  name: string
+): Promise<SessionResponse> {
+  const res = await fetch(`${AUTH_URL}/signup/verify-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, otp, name }),
+  });
+  return asJson<SessionResponse>(res, "Unable to verify signup OTP.");
+}
+
+export async function refreshAuthSession(refreshToken: string): Promise<SessionResponse> {
+  const res = await fetch(`${AUTH_URL}/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  return asJson<SessionResponse>(res, "Session expired. Please sign in again.");
+}
+
 export async function logoutUser(): Promise<{ message: string }> {
   const res = await fetch(`${AUTH_URL}/logout`, {
     method: "POST",
@@ -97,6 +154,21 @@ export async function logoutUser(): Promise<{ message: string }> {
 export async function getOAuthUrl(provider: "google" | "github"): Promise<{ url: string }> {
   const res = await fetch(`${AUTH_URL}/oauth/${provider}`);
   return asJson<{ url: string }>(res, `Failed to initialize ${provider} login.`);
+}
+
+export async function exchangeOAuthCode(code: string): Promise<SessionResponse> {
+  const res = await fetch(`${AUTH_URL}/callback?code=${encodeURIComponent(code)}`, {
+    cache: "no-store",
+  });
+  return asJson<SessionResponse>(res, "OAuth authentication failed.");
+}
+
+export async function getCurrentUser(accessToken: string): Promise<CurrentUserResponse> {
+  const res = await fetch(`${AUTH_URL}/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  return asJson<CurrentUserResponse>(res, "Unable to validate OAuth session.");
 }
 
 // ---------------------------------------------------------------------------
@@ -119,9 +191,7 @@ export async function checkHealth(): Promise<boolean> {
 export async function listConversations(): Promise<ConversationListItem[]> {
   const res = await fetch(CONVERSATIONS_URL, {
     cache: "no-store",
-    headers: {
-      ...getAuthHeaders(),
-    },
+    headers: { ...getAuthHeaders() },
   });
   return asJson(res, "Failed to load conversations.");
 }
@@ -130,11 +200,18 @@ export async function listConversations(): Promise<ConversationListItem[]> {
 export async function getMessages(conversationId: string): Promise<MessageResponse[]> {
   const res = await fetch(`${CONVERSATIONS_URL}/${conversationId}/messages`, {
     cache: "no-store",
-    headers: {
-      ...getAuthHeaders(),
-    },
+    headers: { ...getAuthHeaders() },
   });
   return asJson(res, "Failed to load conversation messages.");
+}
+
+/** DELETE /conversations/{id} */
+export async function deleteConversation(conversationId: string): Promise<{ status: string }> {
+  const res = await fetch(`${CONVERSATIONS_URL}/${conversationId}`, {
+    method: "DELETE",
+    headers: { ...getAuthHeaders() },
+  });
+  return asJson(res, "Failed to delete conversation.");
 }
 
 export async function resolveLatestConversationId(): Promise<string | null> {

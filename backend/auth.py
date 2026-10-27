@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client, create_client
 
-from settings import SUPABASE_ANON_KEY, SUPABASE_URL
+from settings import SUPABASE_ANON_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+from jwt_auth import require_user as require_local_user
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -22,7 +24,7 @@ class AuthUser:
 
 
 def get_supabase_client() -> Client:
-    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+    if not _supabase_configured():
         raise RuntimeError("SUPABASE_URL and SUPABASE_ANON_KEY must be configured")
     return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
@@ -74,19 +76,46 @@ def require_user(
         ) from exc
 
 
+def require_application_user(
+    user=Depends(require_local_user),
+) -> AuthUser:
+    return AuthUser(
+        id=user.id,
+        email=user.email,
+        role="authenticated",
+        access_token="",
+        raw=user,
+    )
+
+
 def get_supabase_admin_client() -> Client:
     from settings import SUPABASE_SERVICE_ROLE_KEY
 
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+    if not _supabase_configured(require_admin=True):
         raise RuntimeError(
             "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured"
         )
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
-def require_supabase_config() -> None:
+def _supabase_configured(require_admin: bool = False) -> bool:
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        return False
+    if require_admin and not SUPABASE_SERVICE_ROLE_KEY:
+        return False
+    if any(token in SUPABASE_URL for token in ("[", "]", "PROJECT-REF")):
+        return False
+    try:
+        parsed = urlparse(SUPABASE_URL)
+    except ValueError:
+        return False
+    return parsed.scheme == "https" and bool(parsed.netloc)
+
+
+def require_supabase_config(require_admin: bool = False) -> None:
+    if not _supabase_configured(require_admin=require_admin):
+        requirement = "SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY" if require_admin else "SUPABASE_URL and SUPABASE_ANON_KEY"
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication service is not configured",
+            detail=f"Authentication service is not configured correctly. Set {requirement} in the repository root .env file.",
         )

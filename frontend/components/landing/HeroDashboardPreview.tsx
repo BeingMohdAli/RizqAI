@@ -40,14 +40,8 @@ export default function HeroDashboardPreview() {
                 <div className="flex items-center gap-2 rounded-lg bg-emerald-500/15 px-2.5 py-1.5 font-medium text-emerald-300">
                   <span>+</span> New Chat
                 </div>
-                <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-text-muted hover:text-text transition-colors">
-                  <span>🕒</span> Research History
-                </div>
-                <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-text-muted hover:text-text transition-colors">
-                  <span>⭐</span> Watchlist
-                </div>
-                <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-text-muted hover:text-text transition-colors">
-                  <span>📑</span> Saved Reports
+                <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-text-muted">
+                  <span>💬</span> Recent Chats
                 </div>
               </div>
             </div>
@@ -246,4 +240,3 @@ export default function HeroDashboardPreview() {
     </div>
   );
 }
-
