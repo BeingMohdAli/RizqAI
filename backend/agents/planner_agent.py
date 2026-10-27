@@ -11,7 +11,7 @@ from langsmith import traceable
 
 @traceable(name="planner_agent")
 async def planner_agent(state: GraphState) -> GraphState:
-    """Extracts company ticker and plan the agents to run"""
+    """Extracts company ticker and plans the agents to run."""
 
     print("Planner agent Working....")
 
@@ -21,20 +21,21 @@ async def planner_agent(state: GraphState) -> GraphState:
             ("system", PLANNER_PROMPT),
             ("human", "Current User Query: {user_query}"),
         ])
-        messages = await prompt.ainvoke({"user_query": state.user_query, "messages":state.messages})
+        messages = await prompt.ainvoke({"user_query": state.user_query, "messages": state.messages})
         plan = await planner_llm.ainvoke(messages)
 
     except Exception as e:
         return {
-            "success": False ,
-            "error" : f"Planner Agent Failed: {str(e)}"
+            "success": False,
+            "error": f"Planner Agent Failed: {str(e)}"
         }
 
     return {
-        "success": True ,
-        "plan" : plan,
+        "success": True,
+        "plan": plan,
+        "general_finance": None,
         "completed_tasks": [],
         "messages": [
-            AIMessage(content=f"Research Agent Output: \n{plan}")
+            AIMessage(content=f"Planner Agent Output: \n{plan}")
         ]
     }

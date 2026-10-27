@@ -52,7 +52,7 @@ export default function Navbar() {
           {user ? (
             <div className="flex items-center gap-2.5">
               <span className="hidden text-xs text-text-muted sm:inline-block max-w-[130px] truncate">
-                {user.email || "Analyst"}
+                {user.name || "Analyst"}
               </span>
               <button
                 onClick={logout}
@@ -100,4 +100,3 @@ export default function Navbar() {
     </header>
   );
 }
-

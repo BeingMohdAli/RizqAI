@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/authContext";
 import {
   checkHealth,
+  deleteConversation,
   getMessages,
   listConversations,
   resolveLatestConversationId,
@@ -13,10 +15,10 @@ import {
 import type { AgentTask, AnalysisTurn, ConversationListItem } from "@/lib/types";
 import { reconstructTurns } from "@/lib/parseHistory";
 import { summarizeEvent } from "@/lib/streamLog";
-import { useAuth } from "@/lib/authContext";
-import ChatTurn from "@/components/ChatTurn";
-import QueryInput from "@/components/QueryInput";
-import Sidebar from "@/components/Sidebar";
+import WorkspaceSidebar from "@/components/workspace/WorkspaceSidebar";
+import WorkspaceRightPanel from "@/components/workspace/WorkspaceRightPanel";
+import WorkspaceCard from "@/components/workspace/WorkspaceCard";
+import WorkspaceInput from "@/components/workspace/WorkspaceInput";
 
 const AGENT_TASK_VALUES: AgentTask[] = [
   "research_agent",
@@ -76,7 +78,7 @@ function applyEvent(turn: AnalysisTurn, event: StreamEvent): AnalysisTurn {
 
   if (data.success === false) {
     next.status = "error";
-    next.error = data.error ?? "The desk hit a snag.";
+    next.error = data.error ?? "The desk encountered an error.";
     return next;
   }
 
@@ -91,35 +93,39 @@ function applyEvent(turn: AnalysisTurn, event: StreamEvent): AnalysisTurn {
 }
 
 export default function WorkspacePage() {
-  const { user, openAuthModal, logout } = useAuth();
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [turns, setTurns] = useState<AnalysisTurn[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [status, setStatus] = useState<"checking" | "open" | "closed">("checking");
   const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false);
+  const [rightPanelOpenMobile, setRightPanelOpenMobile] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const refreshConversations = useCallback(async () => {
     try {
       const list = await listConversations();
       setConversations(list);
-      setStatus("open");
     } catch {
-      setStatus("closed");
+      // Ignore unauthorized or network errors during refresh
     }
   }, []);
 
   useEffect(() => {
-    (async () => {
-      const healthy = await checkHealth();
-      setStatus(healthy ? "open" : "closed");
-      await refreshConversations();
-    })();
-  }, [refreshConversations]);
+    if (!authLoading && !user) {
+      router.replace("/");
+    }
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (user) {
+      checkHealth().catch(() => {});
+      refreshConversations();
+    }
+  }, [user, refreshConversations]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -128,7 +134,6 @@ export default function WorkspacePage() {
   function handleNewAnalysis() {
     setActiveConversationId(null);
     setTurns([]);
-    setLoadError(null);
     setSidebarOpenMobile(false);
   }
 
@@ -138,26 +143,36 @@ export default function WorkspacePage() {
 
     setActiveConversationId(id);
     setHistoryLoading(true);
-    setLoadError(null);
 
     try {
       const messages = await getMessages(id);
       setTurns(reconstructTurns(messages));
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : "Failed to load that conversation.");
+    } catch {
       setTurns([]);
     } finally {
       setHistoryLoading(false);
     }
   }
 
-  async function handleSubmit() {
-    const query = input.trim();
+  async function handleDeleteConversation(id: string) {
+    try {
+      await deleteConversation(id);
+      if (activeConversationId === id) {
+        setActiveConversationId(null);
+        setTurns([]);
+      }
+      await refreshConversations();
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  const executeQuery = async (queryText: string) => {
+    const query = queryText.trim();
     if (!query || isStreaming) return;
 
     const turn = newTurn(query);
     const startingConversationId = activeConversationId;
-
     setTurns((prev) => [...prev, turn]);
     setInput("");
     setIsStreaming(true);
@@ -166,16 +181,14 @@ export default function WorkspacePage() {
       await streamMessage(query, startingConversationId, (event) => {
         setTurns((prev) => prev.map((t) => (t.id === turn.id ? applyEvent(t, event) : t)));
       });
-
       if (!startingConversationId) {
         try {
           const resolvedId = await resolveLatestConversationId();
           if (resolvedId) setActiveConversationId(resolvedId);
         } catch {
-          // Non-fatal — the turn already rendered fine from the live stream.
+          // Non-fatal
         }
       }
-
       await refreshConversations();
     } catch (err) {
       setTurns((prev) =>
@@ -192,151 +205,187 @@ export default function WorkspacePage() {
     } finally {
       setIsStreaming(false);
     }
+  };
+
+  const handleQuickPrompt = (prompt: string) => {
+    setInput(prompt);
+    executeQuery(prompt);
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#070c14] text-text-muted">
+        <div className="flex items-center gap-3">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+          <span className="text-sm">Restoring workspace session…</span>
+        </div>
+      </div>
+    );
   }
 
-  const isEmpty = turns.length === 0 && !historyLoading;
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#070c14] text-text-muted">
+        <div className="text-center space-y-3">
+          <p className="text-sm">Sign in required to access the analyst workspace.</p>
+          <button
+            onClick={() => router.push("/")}
+            className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-ink hover:bg-emerald-400 transition-colors"
+          >
+            Go to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const activeTurn = turns.length > 0 ? turns[turns.length - 1] : null;
+  const userInitial = (user.name || "A").slice(0, 1).toUpperCase();
+  const userName = user.name || "Analyst";
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      <Sidebar
+    <div className="flex h-screen w-full overflow-hidden bg-[#070c14] text-foreground">
+      <WorkspaceSidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
         onSelect={handleSelectConversation}
         onNewAnalysis={handleNewAnalysis}
-        status={status}
+        onDelete={handleDeleteConversation}
         isOpenMobile={sidebarOpenMobile}
         onCloseMobile={() => setSidebarOpenMobile(false)}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ink">
-        {/* Top Header bar with link back to landing and user controls */}
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line-soft bg-ink/90 px-4 py-3 backdrop-blur-md sm:px-6">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpenMobile(true)}
-              aria-label="Open menu"
-              className="text-text-muted transition-colors hover:text-emerald-400 lg:hidden"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </button>
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-text-muted transition-colors hover:text-text"
-              title="Return to Landing Page"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <span className="font-display text-base font-semibold tracking-tight text-text">
-                Rizq<span className="text-emerald-400">AI</span>
-              </span>
-              <span className="hidden rounded-full border border-line px-2 py-0.5 font-mono text-[10px] text-text-faint sm:inline-block">
-                Workspace
-              </span>
-            </Link>
-          </div>
+      {/* Center Chat Terminal */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#080d16] border-x border-[#152030]">
+        {/* Mobile Header Bar */}
+        <header className="flex lg:hidden items-center justify-between border-b border-[#152030] bg-[#070c14] px-4 py-3">
+          <button
+            onClick={() => setSidebarOpenMobile(true)}
+            className="text-text-muted hover:text-white"
+            aria-label="Open sidebar"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <span className="font-display font-bold text-white text-sm">
+            Rizq<span className="text-emerald-400">AI</span>
+          </span>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="hidden text-xs text-text-muted transition-colors hover:text-text sm:inline-flex items-center gap-1.5"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
-              Home
-            </Link>
-            {user ? (
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-semibold text-emerald-400">
-                  {user.email ? user.email.slice(0, 1).toUpperCase() : "U"}
-                </div>
-                <span className="hidden max-w-[140px] truncate text-xs text-text-muted sm:inline-block">
-                  {user.email || "Analyst"}
-                </span>
-                <button
-                  onClick={logout}
-                  className="rounded-md border border-line-soft px-2.5 py-1 text-xs text-text-faint transition-colors hover:border-bear/40 hover:text-bear"
-                >
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => openAuthModal("login")}
-                className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20"
-              >
-                Sign In
-              </button>
-            )}
-          </div>
+          <button
+            onClick={() => setRightPanelOpenMobile(true)}
+            className="text-text-muted hover:text-white xl:hidden"
+            aria-label="Open financial panel"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <line x1="15" y1="3" x2="15" y2="21" />
+            </svg>
+          </button>
         </header>
 
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-y-auto px-4 sm:px-6">
-          {isEmpty ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-8 py-16 text-center">
-              <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse-dot" />
-                  Autonomous Multi-Agent Desk Online
-                </div>
-                <h1 className="font-display text-4xl italic leading-tight text-text sm:text-5xl">
-                  Your desk, working.
-                </h1>
-                <p className="mx-auto max-w-md text-[15px] leading-relaxed text-text-muted">
-                  Ask about a stock. A planner, a research analyst, a risk desk,
-                  a bull, and a bear will each take a pass before the verdict
-                  lands.
-                </p>
-              </div>
-              <div className="w-full max-w-xl">
-                <QueryInput
-                  value={input}
-                  onChange={setInput}
-                  onSubmit={handleSubmit}
-                  disabled={isStreaming}
-                  showExamples
+        {/* Scrollable Chat Area */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          {/* Welcome Greeting Banner */}
+          <div className="relative overflow-hidden rounded-2xl border border-[#162234] bg-gradient-to-b from-[#0e1828]/80 to-[#080f1b]/90 p-6 text-center shadow-lg">
+            <div className="pointer-events-none absolute inset-0 opacity-15">
+              <svg width="100%" height="100%" viewBox="0 0 800 200" preserveAspectRatio="none">
+                <path
+                  d="M0,100 C150,180 350,20 500,80 C650,140 750,40 800,90 L800,200 L0,200 Z"
+                  fill="url(#waveGrad)"
                 />
+                <defs>
+                  <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#10b981" />
+                    <stop offset="100%" stopColor="#3b82f6" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            <div className="relative z-10 space-y-2">
+              <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center justify-center gap-2">
+                Welcome back, {userName} <span className="text-2xl">👋</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-text-muted max-w-md mx-auto">
+                Ask about any stock, financial statement, or macro trend for deep multi-agent research.
+              </p>
+
+              {/* Quick Prompt Chips */}
+              <div className="pt-4 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  onClick={() => handleQuickPrompt("Analyze Apple (AAPL) stock")}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#1a283e] bg-[#0d1624] px-3.5 py-2 text-xs font-medium text-text hover:border-emerald-500/40 hover:text-emerald-300 hover:bg-[#121e32] transition-colors"
+                >
+                  <span></span> Analyze Apple (AAPL)
+                </button>
+                <button
+                  onClick={() => handleQuickPrompt("Analyze Microsoft (MSFT) valuation and risks")}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#1a283e] bg-[#0d1624] px-3.5 py-2 text-xs font-medium text-text hover:border-emerald-500/40 hover:text-emerald-300 hover:bg-[#121e32] transition-colors"
+                >
+                  <span>📊</span> Analyze Microsoft (MSFT)
+                </button>
+                <button
+                  onClick={() => handleQuickPrompt("Compare NVIDIA (NVDA) growth potential vs risks")}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#1a283e] bg-[#0d1624] px-3.5 py-2 text-xs font-medium text-text hover:border-emerald-500/40 hover:text-emerald-300 hover:bg-[#121e32] transition-colors"
+                >
+                  <span>⚡</span> NVIDIA (NVDA) Growth
+                </button>
+                <button
+                  onClick={() => handleQuickPrompt("Explain options trading strategies for portfolio hedging")}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#1a283e] bg-[#0d1624] px-3.5 py-2 text-xs font-medium text-text hover:border-emerald-500/40 hover:text-emerald-300 hover:bg-[#121e32] transition-colors"
+                >
+                  <span>💡</span> Explain Options Hedging
+                </button>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="flex-1 space-y-8 py-6">
-                {historyLoading && (
-                  <div className="flex items-center gap-3 py-8">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 animate-pulse-dot" />
-                    <span className="text-sm text-text-faint">Pulling up the file…</span>
+          </div>
+
+          {/* Chat Messages Stream */}
+          {historyLoading ? (
+            <div className="flex items-center justify-center gap-2 py-12 text-xs text-text-faint">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse-dot" />
+              Loading research thread…
+            </div>
+          ) : turns.map((turn, index) => (
+              <div key={turn.id || index} className="space-y-4">
+                {/* User Message */}
+                <div className="flex justify-end items-end gap-2.5">
+                  <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-sm border border-[#1e304b] bg-[#101b2c] p-4 text-xs sm:text-sm text-white shadow-md">
+                    <p className="leading-relaxed">{turn.query}</p>
                   </div>
-                )}
-                {loadError && (
-                  <div className="rounded-lg border border-bear/30 bg-bear-soft px-4 py-3 text-sm text-bear">
-                    {loadError}
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-emerald-600 to-teal-600 text-xs font-bold text-white shadow-sm">
+                    {userInitial}
                   </div>
-                )}
-                {turns.map((turn) => (
-                  <ChatTurn key={turn.id} turn={turn} />
-                ))}
-                <div ref={bottomRef} />
+                </div>
+
+                {/* Multi-Agent Assistant Output */}
+                <WorkspaceCard turn={turn} />
               </div>
-              <div className="sticky bottom-0 -mx-4 bg-gradient-to-t from-ink via-ink/95 to-transparent px-4 pb-6 pt-8 sm:-mx-6 sm:px-6">
-                <QueryInput
-                  value={input}
-                  onChange={setInput}
-                  onSubmit={handleSubmit}
-                  disabled={isStreaming}
-                  showExamples={false}
-                />
-              </div>
-            </>
-          )}
-        </main>
+          ))}
+
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Bottom Floating Query Input */}
+        <div className="p-4 sm:p-5 bg-gradient-to-t from-[#070c14] via-[#070c14]/95 to-transparent">
+          <WorkspaceInput
+            value={input}
+            onChange={setInput}
+            onSubmit={() => executeQuery(input)}
+            disabled={isStreaming}
+          />
+        </div>
       </div>
+
+      {/* 3. Right Panel (News, Financials, Analysis) */}
+      <WorkspaceRightPanel
+        activeTurn={activeTurn}
+        isOpenMobile={rightPanelOpenMobile}
+        onCloseMobile={() => setRightPanelOpenMobile(false)}
+      />
     </div>
   );
 }
-

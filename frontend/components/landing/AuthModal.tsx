@@ -2,19 +2,34 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getOAuthUrl, requestSignupOtp } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 
 export default function AuthModal() {
   const router = useRouter();
-  const { isAuthModalOpen, closeAuthModal, authModalMode, login, signup } = useAuth();
-  const [mode, setMode] = useState<"login" | "signup">(authModalMode);
+  const { isAuthModalOpen, closeAuthModal, authModalMode, login, signupWithOtp } = useAuth();
+  const [activeTabOverride, setActiveTabOverride] = useState<"login" | "signup" | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [otp, setOtp] = useState("");
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [name, setName] = useState("");
 
   if (!isAuthModalOpen) return null;
+
+  const mode = activeTabOverride ?? authModalMode;
+
+  const handleClose = () => {
+    setActiveTabOverride(null);
+    setError(null);
+    setInfo(null);
+    setOtp("");
+    setOtpRequested(false);
+    closeAuthModal();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,10 +42,12 @@ export default function AuthModal() {
         await login(email, password);
         router.push("/app");
       } else {
-        const msg = await signup(email, password);
-        if (msg) {
-          setInfo(msg);
+        if (!otpRequested) {
+          const response = await requestSignupOtp(email, password);
+          setOtpRequested(true);
+          setInfo(response.message);
         } else {
+          await signupWithOtp(email, password, otp, name);
           router.push("/app");
         }
       }
@@ -41,14 +58,16 @@ export default function AuthModal() {
     }
   };
 
-  const handleGuestAccess = () => {
-    // Generate a temporary local guest session for development/testing
-    const guestId = "guest-" + Math.random().toString(36).slice(2, 8);
-    localStorage.setItem("rizqai_token", "guest-access-token");
-    localStorage.setItem("rizqai_user_id", guestId);
-    localStorage.setItem("rizqai_user_email", "guest@rizq.ai");
-    closeAuthModal();
-    router.push("/app");
+  const handleOAuth = async (provider: "google" | "github") => {
+    setError(null);
+    setLoading(true);
+    try {
+      const { url } = await getOAuthUrl(provider);
+      window.location.assign(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to start OAuth login.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -56,7 +75,7 @@ export default function AuthModal() {
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity"
-        onClick={closeAuthModal}
+        onClick={handleClose}
       />
 
       {/* Modal Dialog */}
@@ -66,7 +85,7 @@ export default function AuthModal() {
 
         {/* Close Button */}
         <button
-          onClick={closeAuthModal}
+          onClick={handleClose}
           className="absolute right-4 top-4 text-text-muted transition-colors hover:text-text"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -100,8 +119,9 @@ export default function AuthModal() {
           <button
             type="button"
             onClick={() => {
-              setMode("login");
+              setActiveTabOverride("login");
               setError(null);
+              setOtpRequested(false);
             }}
             className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-all ${
               mode === "login"
@@ -114,8 +134,9 @@ export default function AuthModal() {
           <button
             type="button"
             onClick={() => {
-              setMode("signup");
+              setActiveTabOverride("signup");
               setError(null);
+              setOtpRequested(false);
             }}
             className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-all ${
               mode === "signup"
@@ -142,6 +163,21 @@ export default function AuthModal() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
+            {mode === "signup" && otpRequested && (
+              <>
+                <label className="mb-1.5 block text-xs font-medium text-text-muted">Your name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your full name"
+                  className="w-full rounded-xl border border-line-soft bg-ink px-3.5 py-2.5 text-sm text-text placeholder-text-faint"
+                />
+              </>
+            )}
+          </div>
+          <div>
             <label className="mb-1.5 block text-xs font-medium text-text-muted">Email address</label>
             <input
               type="email"
@@ -152,6 +188,23 @@ export default function AuthModal() {
               className="w-full rounded-xl border border-line-soft bg-ink px-3.5 py-2.5 text-sm text-text placeholder-text-faint transition-colors focus:border-emerald-500/60 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
             />
           </div>
+
+          {mode === "signup" && otpRequested && (
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-text-muted">OTP Code</label>
+              <input
+                type="text"
+                required
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                placeholder="Enter 6-digit OTP"
+                className="w-full rounded-xl border border-line-soft bg-ink px-3.5 py-2.5 text-sm text-text placeholder-text-faint transition-colors focus:border-emerald-500/60 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+              />
+            </div>
+          )}
 
           <div>
             <label className="mb-1.5 block text-xs font-medium text-text-muted">Password</label>
@@ -178,29 +231,31 @@ export default function AuthModal() {
               </span>
             ) : mode === "login" ? (
               "Sign In to Desk"
+            ) : otpRequested ? (
+              "Verify OTP & Create Account"
             ) : (
-              "Create Account"
+              "Send Signup OTP"
             )}
           </button>
         </form>
 
-        {/* Quick guest demo option */}
-        <div className="mt-5 border-t border-line-soft pt-4 text-center">
-          <p className="text-[11px] text-text-faint mb-2">Want to explore without credentials?</p>
-          <button
-            onClick={handleGuestAccess}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line-soft px-3 py-1.5 text-xs text-text-muted transition-colors hover:border-emerald-500/30 hover:text-emerald-400"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-              <polyline points="10 17 15 12 10 7" />
-              <line x1="15" y1="12" x2="3" y2="12" />
-            </svg>
-            Enter Workspace as Guest Analyst
-          </button>
+        <div className="mt-5 border-t border-line-soft pt-4">
+          <p className="mb-2 text-center text-[11px] text-text-faint">Or continue with</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(["google", "github"] as const).map((provider) => (
+              <button
+                key={provider}
+                type="button"
+                disabled={loading}
+                onClick={() => handleOAuth(provider)}
+                className="rounded-lg border border-line-soft px-3 py-2 text-xs font-medium capitalize text-text-muted transition-colors hover:border-emerald-500/30 hover:text-emerald-400 disabled:opacity-50"
+              >
+                {provider}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

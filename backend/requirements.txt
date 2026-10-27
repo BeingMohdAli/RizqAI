@@ -13,3 +13,9 @@ newsapi-python==0.2.7
 fastapi==0.141.1
 uvicorn[standard]==0.52.0
 aiosqlite==0.22.1
+supabase==2.28.0
+psycopg[binary]==3.2.10
+email-validator==2.3.0
+pytest==8.4.2
+httpx==0.28.1
+alembic==1.16.5

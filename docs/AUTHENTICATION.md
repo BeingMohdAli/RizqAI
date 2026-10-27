@@ -10,6 +10,8 @@ Copy the root `.env.example` to `.env` and set:
 
 - `DATABASE_URL`: Supabase PostgreSQL connection string. Use the pooler URL for
   deployed/serverless workloads when appropriate.
+- `JWT_SECRET`: long random server-only secret used to sign access JWTs. Never
+  expose it to the frontend.
 - `SUPABASE_URL`: project URL.
 - `SUPABASE_ANON_KEY`: publishable anon key used for user-scoped Auth calls.
 - `SUPABASE_SERVICE_ROLE_KEY`: server-only key used to revoke all sessions at
@@ -26,22 +28,29 @@ Copy the root `.env.example` to `.env` and set:
    ```
 
    Alembic creates the application tables, profile trigger, indexes, foreign
-   keys, and RLS policies. The SQL file at
-   [`supabase/migrations/20261024115129_auth_and_rls.sql`](../supabase/migrations/20261024115129_auth_and_rls.sql)
-   is retained for Supabase SQL-editor/manual installations; do not run both
-   migration paths against the same database.
+   keys, and RLS policies.    Alembic is the only supported schema migration path for this application;
+   do not run ad-hoc SQL schema copies against the same database.
 2. In **Authentication > URL Configuration**, add the redirect URLs used by
    `AUTH_REDIRECT_URL` and `PASSWORD_RESET_REDIRECT_URL`.
-3. Enable Email provider and configure SMTP in Supabase. Disable anonymous
-   sign-ins for production.
+3. Enable Email provider in Supabase. RizqAI's local signup verification prints
+   a six-digit OTP in the backend terminal; it does not send that OTP by email.
+   The OTP expires after 10 minutes and is limited to five attempts. The
+   application stores only a salted PBKDF2 hash and never stores the raw OTP
+   or the signup password. Supabase Auth owns password hashing in `auth.users`.
 4. Under **Authentication > Providers**, enable Google and GitHub.
 5. In Google Cloud OAuth, add the Supabase provider callback URL shown by the
    Supabase dashboard. Add the Google client ID/secret to Supabase.
 6. In GitHub OAuth, create an OAuth app with the same Supabase provider callback
    URL, then add its client ID/secret to Supabase.
 
-Supabase owns OAuth provider state and code exchange. The backend only accepts a
-short-lived callback `code`; it does not accept provider access tokens.
+Email/password signup and login use the application `users` table. Passwords
+are stored only as salted PBKDF2 hashes. Access tokens are signed JWTs and
+refresh-token hashes plus revocation state are stored in `auth_sessions`.
+The backend starts OAuth in implicit mode and the frontend callback accepts the
+short-lived Supabase access token returned in the callback URL hash. A
+code-based callback remains supported for deployments configured for PKCE. The
+backend validates the resulting token with Supabase before creating the local
+session.
 
 ## API
 
@@ -50,7 +59,10 @@ tokens because the caller must hold them to authenticate subsequent requests.
 The server does not log them. Send the access token as:
 `Authorization: Bearer <access-token>`.
 
-- `POST /auth/signup` with `{ "email", "password" }`
+- `POST /auth/signup/request-otp` with `{ "email", "password" }`; the OTP is
+  printed only in the backend terminal.
+- `POST /auth/signup/verify-otp` with `{ "email", "password", "otp" }`
+  to create the confirmed Supabase user and receive a session.
 - `POST /auth/login` with `{ "email", "password" }`
 - `POST /auth/refresh` with `{ "refresh_token" }`; replace the old session with
   the returned rotated session.
@@ -64,7 +76,7 @@ The server does not log them. Send the access token as:
   session and `{ "password" }`. Supabase makes recovery sessions and reset
   tokens expiring and single-use.
 
-`/conversations/*` is protected by Supabase `auth.get_user`, which validates
+`/analysis/stream` is protected by the application bearer-token dependency, which validates
 signature, expiry, revocation, and claims remotely. Every conversation query is
 scoped to the authenticated user ID. Supabase RLS provides a second
 authorization boundary for PostgreSQL access.

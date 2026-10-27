@@ -14,7 +14,7 @@ async def general_finance_agent(state: GraphState) -> GraphState:
     print("General Finance agent Working....")
 
     try:
-        structured_llm  = general_finance_llm.with_structured_output(GeneralFinanceAnswer)
+        structured_llm = general_finance_llm.with_structured_output(GeneralFinanceAnswer)
         prompt = ChatPromptTemplate.from_messages([
             ("system", GENERAL_FINANCE_PROMPT),
             ("human", "{user_query}"),
@@ -31,5 +31,10 @@ async def general_finance_agent(state: GraphState) -> GraphState:
     return {
         "success": True,
         "general_finance": answer,
+        "plan": None,
+        "research": None,
+        "risks": None,
+        "debate": None,
+        "thesis": None,
         "completed_tasks": ["general_finance_agent"]
     }
